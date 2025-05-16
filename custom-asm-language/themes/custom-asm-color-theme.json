@@ -1,0 +1,42 @@
+{
+    "name": "Custom ASM Theme",
+    "type": "dark",
+    "colors": {
+        "editor.background": "#1E1E1E",
+        "editor.foreground": "#D4D4D4"
+    },
+    "tokenColors": [
+        {
+        "scope": "comment.line.semicolon.custom-asm",
+        "settings": {
+            "foreground": "#6A9955"
+        }
+        },
+        {
+        "scope": "entity.name.function.custom-asm",
+        "settings": {
+            "foreground": "#DCDCAA",
+            "fontStyle": "bold"
+        }
+        },
+        {
+        "scope": "keyword.instruction.custom-asm",
+        "settings": {
+            "foreground": "#E81667",
+            "fontStyle": "bold"
+        }
+        },
+        {
+        "scope": "variable.parameter.register.custom-asm",
+        "settings": {
+            "foreground": "#BD14F0"
+        }
+        },
+        {
+        "scope": "constant.numeric.custom-asm",
+        "settings": {
+            "foreground": "#B5CEA8"
+        }
+        }
+    ]
+}
