@@ -1,0 +1,9 @@
+# CPU5.5-ASM-Compiler
+Simple custom ASM compiler for my CPU5.
+
+# How to use
+First, write your assembly language in the main.asm file.
+Then, run the python script, you can give the asm file name and the output file name in argument like "python compiler.py myfile.asm myoutput.hex" .
+
+You can install the color pack for VScode by pasting the "custom-asm-language" file in C:\Users\{your name}\.vscode\extensions on Windows and in "~/.vscode/extensions/" on Linux/MacOS.
+
