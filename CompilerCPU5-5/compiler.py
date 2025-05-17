@@ -1,135 +1,271 @@
+#!/usr/bin/env python3
 import sys
-try:
-    source=open(sys.argv[1],"r")
-    output=open(sys.argv[2],"w")
-except:
-    source=open("main.asm","r")
-    output=open("main.hex","w")
 
-PC=0
-ld=0
-jmp=0
-ROM=255 #size of your ROM
-commande=["HALT","LOAD","ADD","ADDI","SUB","SUBI","SHL","SHLI","SHR","SHRI","AND","ANDI","NAND","NANDI","OR","ORI","XOR","XORI","JMP","JM0","JMC","JMN","IN","OUT","OUTI","CALL","RET"]
-registres=["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15"]
-raccourcis=["RAM0","GPI0","GPI1","GPO0","GPO1","SPI","BAUDH","BAUDL","UART"]
-adrRacc=[16384,0,1,2,3,4,5,6,7]
-label=[]
-adrLab=[]
-
-#decimal to binary with output lenght
-def b(decimal,nb):
-    b=""
-    for i in range(nb):
-        bi=decimal % 2
-        decimal //= 2
-        b=str(bi)+b
-    return(b)
-
-#binary to hexadecimal with 8 digits output 
-def hexa8(strbin):
-    binhex=["0000","0001","0010","0011","0100","0101","0110","0111","1000","1001","1010","1011","1100","1101","1110","1111"]
-    dechex=["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"]
-    mot="000"+strbin
-    h1=dechex[binhex.index(mot[0:4])]
-    h2=dechex[binhex.index(mot[4:8])]
-    h3=dechex[binhex.index(mot[8:12])]
-    h4=dechex[binhex.index(mot[12:16])]
-    h5=dechex[binhex.index(mot[16:20])]
-    h6=dechex[binhex.index(mot[20:24])]
-    h7=dechex[binhex.index(mot[24:28])]
-    h8=dechex[binhex.index(mot[28:32])]
-    return(h1+h2+h3+h4+h5+h6+h7+h8)
-
-#get label adresses
-for line in source:
-    mots = line.split()
-    if(len(mots)!=0 and mots[0][0]!=';'):
-        try:
-            if(mots[1]==':'):
-                label.append(mots[0])
-                adrLab.append(PC)
-            elif(mots[1][0]==';' and mots[0]!="HALT" and mots[0]!="CALL" and mots[0]!="RET"):
-                print("Error : no argument for instruction but ';' found")
-                print("Error in line: "+str(PC+1))
-                sys.exit()
-            else:
-                PC+=1
-        except:
-            PC+=1
-        if(PC==ROM):
-            print("Error : ROM size: "+str(ROM)+" exceeded")
-            sys.exit()
-
-source.close()
-#convert to machine code
-source=open("main.asm","r")
-for ligne in source:
-    mots = ligne.split()
-    if(len(mots)!=0 and mots[0][0]!=';'):
-        try:
-            if(mots[1]!=':'):
-                inst=b(commande.index(mots[0]),5)
-                if mots[1] in registres:
-                    inst=inst+b(registres.index(mots[1]),4)
-                elif mots[1] in label:
-                    if(inst=="10011"):
-                        inst=inst+"00000001"+b(adrLab[label.index(mots[1])],16)
-                    elif(inst=="10100"):
-                        inst=inst+"00000010"+b(adrLab[label.index(mots[1])],16)
-                    elif(inst=="10101"):
-                        inst=inst+"00000011"+b(adrLab[label.index(mots[1])],16)
-                    else:
-                        inst=inst+"00000000"+b(adrLab[label.index(mots[1])],16)
-                    jmp=1
-                else:
-                    if(inst=="10011"):
-                        inst=inst+"00000001"+b(int(mots[1],16))
-                    elif(inst=="10100"):
-                        inst=inst+"00000010"+b(int(mots[1],16))
-                    elif(inst=="10101"):
-                        inst=inst+"00000011"+b(int(mots[1],16))
-                    else:
-                        inst=inst+"00000000"+b(int(mots[1],16))
-                    jmp=1 
-                try:
-                    if mots[2] in registres:
-                        inst=inst+b(registres.index(mots[2]),4)
-                    elif mots[2] in label:
-                        inst=inst+"0000"+b(adrLab[label.index(mots[2])],16)
-                        ld=1
-                    elif mots[2] in raccourcis:
-                        inst=inst+"0000"+b(adrRacc[raccourcis.index(mots[2])],16)
-                        ld=1
-                    else:
-                        inst=inst+"0000"+b(int(mots[2]),16)
-                        ld=1
-                except:
-                    if(jmp==0 and ld==0):
-                        inst=inst+"00000000000000000000"
-                try:
-                    if mots[3] in registres:
-                        inst=inst+b(registres.index(mots[3]),4)+"000000000000"
-                    elif mots[3] in label:
-                        inst=inst+b(adrLab[label.index(mots[3])],16)
-                        ld=1
-                    elif mots[3] in raccourcis:
-                        inst=inst+b(adrRacc[raccourcis.index(mots[3])],16)
-                        ld=1
-                    else:
-                        inst=inst+b(int(mots[3]),16)
-                        ld=1
-                except:
-                    if(jmp==0 and ld==0):
-                        inst=inst+"0000000000000000"
-                output.write(hexa8(inst))
-                output.write('\n')
-                jmp=0
-                ld=0            
-        except:
-            inst=b(commande.index(mots[0]),5)+"000000000000000000000000"
-            output.write(hexa8(inst))
-            output.write('\n')
+def main():
+    # Constants
+    ROM_SIZE = 255
+    # Les 4 instructions de saut partagent le même opcode de base (10010)
+    # Les opcodes des instructions suivantes sont décalés de 3
+    COMMANDS = ["HALT", "LOAD", "ADD", "ADDI", "SUB", "SUBI", "SHL", "SHLI", "SHR", "SHRI", 
+                "AND", "ANDI", "NAND", "NANDI", "OR", "ORI", "XOR", "XORI", 
+                "JMP", # Opcode 10010, JMP ID = 00
+                # JM0, JMC, JMN ont le même opcode 10010 avec des JMP ID différents
+                "IN", "OUT", "OUTI", "CALL", "RET"]
+    
+    # JMP ID pour les différentes instructions de saut
+    JUMP_IDS = {
+        "JMP": 0,  # 00
+        "JM0": 1,  # 01
+        "JMC": 2,  # 10
+        "JMN": 3   # 11
+    }
+    
+    REGISTERS = [f"R{i}" for i in range(16)]
+    SHORTCUTS = ["RAM0", "GPI0", "GPI1", "GPO0", "GPO1", "SPI", "BAUDH", "BAUDL", "UART"]
+    ADDR_SHORTCUTS = [16384, 0, 1, 2, 3, 4, 5, 6, 7]
+    
+    # Parse input arguments
+    try:
+        source_file = sys.argv[1]
+        output_file = sys.argv[2]
         
-source.close()
-output.close()
+        if output_file.endswith(".bin"):
+            mode = 0  # binary output
+        elif output_file.endswith(".v"):
+            mode = 1  # Verilog ROM output
+        else:
+            mode = 2  # hex output
+    except:
+        source_file = "main.asm"
+        output_file = "C:/Users/redsq/Documents/logisim/Tang nano 9k/CPU5_5/src/ROM.v"
+        mode = 1
+    
+    # First pass: collect labels
+    labels = {}
+    pc = 0
+    
+    with open(source_file, "r") as source:
+        for line in source:
+            words = line.strip().split()
+            if not words or words[0].startswith(';'):
+                continue
+                
+            try:
+                if words[1] == ':':
+                    labels[words[0]] = pc
+                elif words[1].startswith(';') and words[0] not in ["HALT", "CALL", "RET"]:
+                    print(f"Error: no argument for instruction but ';' found on line {pc+1}")
+                    sys.exit(1)
+                else:
+                    pc += 1
+            except IndexError:
+                pc += 1
+                
+            if pc == ROM_SIZE:
+                print(f"Error: ROM size: {ROM_SIZE} exceeded")
+                sys.exit(1)
+    
+    # Helper functions
+    def to_binary(decimal, length):
+        """Convert decimal to binary string of fixed length"""
+        if isinstance(decimal, int):
+            return format(decimal & ((1 << length) - 1), f'0{length}b')
+        try:
+            return format(int(decimal) & ((1 << length) - 1), f'0{length}b')
+        except ValueError:
+            return "0" * length
+    
+    def to_hex8(binary_str):
+        """Convert 29-bit binary string to 8-digit hex"""
+        # Pad to 32 bits for easier conversion
+        padded = "000" + binary_str
+        return format(int(padded, 2), '08x')
+    
+    def to_verilog(inst, pc):
+        """Format instruction for Verilog ROM"""
+        return f"        data[{pc}] = 29'h{to_hex8(inst)};\n"
+    
+    # Second pass: generate machine code
+    with open(source_file, "r") as source, open(output_file, "w") as output:
+        # Write Verilog header if needed
+        if mode == 1:
+            output.write("module ROM(\n"
+                         "    output reg[28:0] DataROM,\n"
+                         "    input wire[7:0] AddrROM\n"
+                         ");\n"
+                         "    reg[28:0] data [255:0];\n"
+                         "    initial begin\n")
+        
+        pc = 0
+        for line in source:
+            words = line.strip().split()
+            if not words or words[0].startswith(';'):
+                continue
+                
+            if len(words) > 1 and words[1] == ':':
+                continue  # Skip label definitions in second pass
+                
+            try:
+                # Gestion spéciale pour les instructions de saut
+                if words[0] in JUMP_IDS:
+                    instruction = "10010"  # Opcode commun pour tous les sauts
+                    jump_id = to_binary(JUMP_IDS[words[0]], 2)  # ID du saut sur 2 bits
+                    
+                    # Traitement de l'adresse de saut
+                    if len(words) > 1:
+                        if words[1] in labels:
+                            # Référence à un label
+                            instruction += "000000" + jump_id + to_binary(labels[words[1]], 16)
+                        else:
+                            # Adresse directe
+                            try:
+                                value = int(words[1], 16) if words[1].startswith('0x') else int(words[1], 10)
+                                instruction += "000000" + jump_id + to_binary(value, 16)
+                            except ValueError:
+                                print(f"Error: Invalid jump address '{words[1]}' on line {pc+1}")
+                                sys.exit(1)
+                    else:
+                        print(f"Error: Jump instruction without target on line {pc+1}")
+                        sys.exit(1)
+                        
+                    # Compléter l'instruction pour atteindre 29 bits
+                    instruction += "0" * (29 - len(instruction))
+                else:
+                        # Instructions normales (non-saut)
+                    if words[0] not in COMMANDS:
+                        raise ValueError(f"Unknown command '{words[0]}'")
+                    else:
+                        # Get opcode
+                        instruction = to_binary(COMMANDS.index(words[0]), 5)
+                        
+                        # Flag for load instructions
+                        is_load = False
+                        
+                        # Process first operand
+                        if len(words) > 1 and words[1] != ':':
+                            if words[1] in REGISTERS:
+                                if words[0] in [ "OUT", "OUTI"]:
+                                    instruction += "0000" + to_binary(REGISTERS.index(words[1]), 4)
+                                else:
+                                    instruction += to_binary(REGISTERS.index(words[1]), 4)
+                            else:
+                                # Valeur immédiate
+                                try:
+                                    value = int(words[1], 16) if words[1].startswith('0x') else int(words[1], 10)
+                                    instruction += "0000" + to_binary(value, 16)
+                                except ValueError:
+                                    if words[1] in labels:
+                                        instruction += "0000" + to_binary(labels[words[1]], 16)
+                                    elif words[1].startswith(';'):
+                                        pass
+                                    else:
+                                        print(f"Error: Invalid value '{words[1]}' on line {pc+1}")
+                                        sys.exit(1)
+                        
+                            # Process second operand
+                            if len(words) > 2:
+                                if words[2] in REGISTERS:
+                                    instruction += to_binary(REGISTERS.index(words[2]), 4)
+                                elif words[2] in labels:
+                                    instruction += "0000" + to_binary(labels[words[2]], 16)
+                                    is_load = True
+                                elif words[2] in SHORTCUTS:
+                                    if words[0] in [ "OUT", "OUTI"]:
+                                        instruction += to_binary(ADDR_SHORTCUTS[SHORTCUTS.index(words[2])], 16)
+                                    else:
+                                        instruction += "0000" + to_binary(ADDR_SHORTCUTS[SHORTCUTS.index(words[2])], 16)
+                                    is_load = True
+                                else:
+                                    try:
+                                        value = int(words[2], 16) if words[2].startswith('0x') else int(words[2], 10)
+                                        if words[0] in [ "OUT", "OUTI"]:
+                                            instruction += to_binary(value, 16)
+                                        else:
+                                            instruction += "0000" + to_binary(value, 16)
+                                        is_load = True
+                                    except ValueError:
+                                        if words[2].startswith(';'):
+                                            pass
+                                        else:
+                                            print(f"Error: Invalid value '{words[2]}' on line {pc+1}")
+                                            sys.exit(1)
+                            else:
+                                instruction += "0" * (29 - len(instruction))
+                        
+                            # Process third operand
+                            if len(words) > 3:
+                                if words[3] in REGISTERS:
+                                    instruction += to_binary(REGISTERS.index(words[3]), 4) + "0" * 12
+                                elif words[3] in labels:
+                                    instruction += to_binary(labels[words[3]], 16)
+                                    is_load = True
+                                elif words[3] in SHORTCUTS:
+                                    instruction += to_binary(ADDR_SHORTCUTS[SHORTCUTS.index(words[3])], 16)
+                                    is_load = True
+                                else:
+                                    try:
+                                        value = int(words[3], 16) if words[3].startswith('0x') else int(words[3], 10)
+                                        instruction += to_binary(value, 16)
+                                        is_load = True
+                                    except ValueError:
+                                        if words[3].startswith(';'):
+                                            pass
+                                        else:
+                                            print(f"Error: Invalid value '{words[3]}' on line {pc+1}")
+                                            sys.exit(1)
+                            elif not is_load:
+                                instruction += "0" * (29 - len(instruction))
+                        else:
+                            # No operands (like HALT)
+                            instruction += "0" * (29 - len(instruction))
+                    
+                # Ensure instruction is 29 bits long
+                if len(instruction) != 29:
+                    instruction = instruction.ljust(29, '0')
+                
+                # Write the instruction in the appropriate format
+                if mode == 0:
+                    output.write(instruction + '\n')
+                elif mode == 1:
+                    output.write(to_verilog(instruction, pc))
+                elif mode == 2:
+                    output.write(to_hex8(instruction) + '\n')
+                
+                pc += 1
+            except Exception as e:
+                print(f"Error on line {pc+1}: {str(e)}")
+                if words[0] in COMMANDS:
+                    # Handle single-opcode instructions like HALT
+                    instruction = to_binary(COMMANDS.index(words[0]), 5) + "0" * 24
+                    if mode == 0:
+                        output.write(instruction + '\n')
+                    elif mode == 1:
+                        output.write(to_verilog(instruction, pc))
+                    elif mode == 2:
+                        output.write(to_hex8(instruction) + '\n')
+                    pc += 1
+                elif words[0] in JUMP_IDS:
+                    # Handle jump instructions that failed
+                    instruction = "10010" + to_binary(JUMP_IDS[words[0]], 2) + "0" * 22
+                    if mode == 0:
+                        output.write(instruction + '\n')
+                    elif mode == 1:
+                        output.write(to_verilog(instruction, pc))
+                    elif mode == 2:
+                        output.write(to_hex8(instruction) + '\n')
+                    pc += 1
+        
+        # Write Verilog footer if needed
+        if mode == 1:
+            output.write("    end\n"
+                         "    \n"
+                         "    // Lecture synchrone ou asynchrone de la ROM\n"
+                         "    always @(*) begin\n"
+                         "        DataROM = data[AddrROM];\n"
+                         "    end\n"
+                         "endmodule\n")
+    
+    print("\nCompilation terminée\n")
+
+if __name__ == "__main__":
+    main()
