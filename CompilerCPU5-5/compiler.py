@@ -9,6 +9,7 @@ except:
 PC=0
 ld=0
 jmp=0
+ROM=255 #size of your ROM
 commande=["HALT","LOAD","ADD","ADDI","SUB","SUBI","SHL","SHLI","SHR","SHRI","AND","ANDI","NAND","NANDI","OR","ORI","XOR","XORI","JMP","JM0","JMC","JMN","IN","OUT","OUTI","CALL","RET"]
 registres=["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15"]
 raccourcis=["RAM0","GPI0","GPI1","GPO0","GPO1","SPI","BAUDH","BAUDL","UART"]
@@ -42,85 +43,93 @@ def hexa8(strbin):
 
 #get label adresses
 for line in source:
-    try:
-        mots = line.split()
-        if(mots[1]==':'):
-            label.append(mots[0])
-            adrLab.append(PC)
-        else:
+    mots = line.split()
+    if(len(mots)!=0 and mots[0][0]!=';'):
+        try:
+            if(mots[1]==':'):
+                label.append(mots[0])
+                adrLab.append(PC)
+            elif(mots[1][0]==';' and mots[0]!="HALT" and mots[0]!="CALL" and mots[0]!="RET"):
+                print("Error : no argument for instruction but ';' found")
+                print("Error in line: "+str(PC+1))
+                sys.exit()
+            else:
+                PC+=1
+        except:
             PC+=1
-    except:
-        PC+=1
+        if(PC==ROM):
+            print("Error : ROM size: "+str(ROM)+" exceeded")
+            sys.exit()
+
 source.close()
-print(label)
 #convert to machine code
 source=open("main.asm","r")
 for ligne in source:
     mots = ligne.split()
-    try:
-        if(mots[1]!=':'):
-            inst=b(commande.index(mots[0]),5)
-            if mots[1] in registres:
-                inst=inst+b(registres.index(mots[1]),4)
-            elif mots[1] in label:
-                if(inst=="10011"):
-                    inst=inst+"00000001"+b(adrLab[label.index(mots[1])],16)
-                elif(inst=="10100"):
-                    inst=inst+"00000010"+b(adrLab[label.index(mots[1])],16)
-                elif(inst=="10101"):
-                    inst=inst+"00000011"+b(adrLab[label.index(mots[1])],16)
+    if(len(mots)!=0 and mots[0][0]!=';'):
+        try:
+            if(mots[1]!=':'):
+                inst=b(commande.index(mots[0]),5)
+                if mots[1] in registres:
+                    inst=inst+b(registres.index(mots[1]),4)
+                elif mots[1] in label:
+                    if(inst=="10011"):
+                        inst=inst+"00000001"+b(adrLab[label.index(mots[1])],16)
+                    elif(inst=="10100"):
+                        inst=inst+"00000010"+b(adrLab[label.index(mots[1])],16)
+                    elif(inst=="10101"):
+                        inst=inst+"00000011"+b(adrLab[label.index(mots[1])],16)
+                    else:
+                        inst=inst+"00000000"+b(adrLab[label.index(mots[1])],16)
+                    jmp=1
                 else:
-                    inst=inst+"00000000"+b(adrLab[label.index(mots[1])],16)
-                jmp=1
-            else:
-                if(inst=="10011"):
-                    inst=inst+"00000001"+b(int(mots[1],16))
-                elif(inst=="10100"):
-                    inst=inst+"00000010"+b(int(mots[1],16))
-                elif(inst=="10101"):
-                    inst=inst+"00000011"+b(int(mots[1],16))
-                else:
-                    inst=inst+"00000000"+b(int(mots[1],16))
-                jmp=1 
-            try:
-                if mots[2] in registres:
-                    inst=inst+b(registres.index(mots[2]),4)
-                elif mots[2] in label:
-                    inst=inst+"0000"+b(adrLab[label.index(mots[2])],16)
-                    ld=1
-                elif mots[2] in raccourcis:
-                    inst=inst+"0000"+b(adrRacc[raccourcis.index(mots[2])],16)
-                    ld=1
-                else:
-                    inst=inst+"0000"+b(int(mots[2]),16)
-                    ld=1
-            except:
-                if(jmp==0 and ld==0):
-                    inst=inst+"00000000000000000000"
-            try:
-                if mots[3] in registres:
-                    inst=inst+b(registres.index(mots[3]),4)+"000000000000"
-                elif mots[3] in label:
-                    inst=inst+b(adrLab[label.index(mots[3])],16)
-                    ld=1
-                elif mots[3] in raccourcis:
-                    inst=inst+b(adrRacc[raccourcis.index(mots[3])],16)
-                    ld=1
-                else:
-                    inst=inst+b(int(mots[3]),16)
-                    ld=1
-            except:
-                if(jmp==0 and ld==0):
-                    inst=inst+"0000000000000000"
+                    if(inst=="10011"):
+                        inst=inst+"00000001"+b(int(mots[1],16))
+                    elif(inst=="10100"):
+                        inst=inst+"00000010"+b(int(mots[1],16))
+                    elif(inst=="10101"):
+                        inst=inst+"00000011"+b(int(mots[1],16))
+                    else:
+                        inst=inst+"00000000"+b(int(mots[1],16))
+                    jmp=1 
+                try:
+                    if mots[2] in registres:
+                        inst=inst+b(registres.index(mots[2]),4)
+                    elif mots[2] in label:
+                        inst=inst+"0000"+b(adrLab[label.index(mots[2])],16)
+                        ld=1
+                    elif mots[2] in raccourcis:
+                        inst=inst+"0000"+b(adrRacc[raccourcis.index(mots[2])],16)
+                        ld=1
+                    else:
+                        inst=inst+"0000"+b(int(mots[2]),16)
+                        ld=1
+                except:
+                    if(jmp==0 and ld==0):
+                        inst=inst+"00000000000000000000"
+                try:
+                    if mots[3] in registres:
+                        inst=inst+b(registres.index(mots[3]),4)+"000000000000"
+                    elif mots[3] in label:
+                        inst=inst+b(adrLab[label.index(mots[3])],16)
+                        ld=1
+                    elif mots[3] in raccourcis:
+                        inst=inst+b(adrRacc[raccourcis.index(mots[3])],16)
+                        ld=1
+                    else:
+                        inst=inst+b(int(mots[3]),16)
+                        ld=1
+                except:
+                    if(jmp==0 and ld==0):
+                        inst=inst+"0000000000000000"
+                output.write(hexa8(inst))
+                output.write('\n')
+                jmp=0
+                ld=0            
+        except:
+            inst=b(commande.index(mots[0]),5)+"000000000000000000000000"
             output.write(hexa8(inst))
             output.write('\n')
-            jmp=0
-            ld=0            
-    except:
-        inst=b(commande.index(mots[0]),5)+"000000000000000000000000"
-        output.write(hexa8(inst))
-        output.write('\n')
         
-
 source.close()
 output.close()
