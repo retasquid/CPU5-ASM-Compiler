@@ -6,4 +6,6 @@ First, write your assembly language in the main.asm file.
 Then, run the python script, you can give the asm file name and the output file name in argument like "python compiler.py myfile.asm myoutput.hex" .
 
 You can install the color pack for VScode by pasting the "custom-asm-language" file in C:\Users\{your name}\.vscode\extensions on Windows and in "~/.vscode/extensions/" on Linux/MacOS.
+Then modify your extensions.json by adding : 
 
+{"identifier":{"id":"undefined_publisher.custom-asm-language"},"version":"0.0.1","location":{"$mid":1,"path":"/c:/Users/redsq/.vscode/extensions/custom-asm-language","scheme":"file"},"relativeLocation":"custom-asm-language"}
