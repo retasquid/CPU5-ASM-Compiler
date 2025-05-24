@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 
 def main():
@@ -20,9 +19,9 @@ def main():
         "JMN": 3   # 11
     }
     
-    REGISTERS = [f"R{i}" for i in range(16)]
-    SHORTCUTS = ["RAM0", "GPI0", "GPI1", "GPO0", "GPO1", "SPI", "BAUDH", "BAUDL", "UART"]
-    ADDR_SHORTCUTS = [16384, 0, 1, 2, 3, 4, 5, 6, 7]
+    REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "PC", "SP"]
+    SHORTCUTS = ["RAM0", "SP0", "GPI0", "GPI1", "GPO0", "GPO1", "SPI", "BAUDH", "BAUDL", "UART"]
+    ADDR_SHORTCUTS = [16384, 32767, 0, 1, 2, 3, 4, 5, 6, 7]
     
     # Parse input arguments
     try:
@@ -165,7 +164,10 @@ def main():
                             # Process second operand
                             if len(words) > 2:
                                 if words[2] in REGISTERS:
-                                    instruction += to_binary(REGISTERS.index(words[2]), 4)
+                                    if( words[0]=="IN"):
+                                        instruction += "0000" + to_binary(REGISTERS.index(words[2]), 4)
+                                    else:
+                                        instruction += to_binary(REGISTERS.index(words[2]), 4)
                                 elif words[2] in labels:
                                     instruction += "0000" + to_binary(labels[words[2]], 16)
                                     is_load = True
