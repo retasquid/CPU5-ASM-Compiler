@@ -6,6 +6,7 @@
       { "include": "#labels" },
       { "include": "#instructions" },
       { "include": "#registers" },
+      { "include": "#RAMregisters" },
       { "include": "#numbers" }
     ],
     "repository": {
@@ -20,11 +21,15 @@
         }
       },
       "registers": {
-        "match": "\\b(R[0-9]+|UART)\\b",
+        "match": "\\b(R[0-9]+|SP|PC)\\b",
         "name": "variable.parameter.register.custom-asm"
       },
+      "RAMregisters": {
+        "match": "\\b(RAM0|SP0|GPI0|GPI1|GPO0|GPO1|SPI|BAUDH|BAUDL|UART)\\b",
+        "name": "variable.parameter.RAMregister.custom-asm"
+      },
       "instructions": {
-        "match": "\\b(HALT|LOAD|ADD|ADDI|SUB|SUBI|SHL|SHLI|SHR|SHRI|AND|ANDI|NAND|NANDI|OR|ORI|XOR|XORI|JMP|JM0|JMC|JMN|IN|OUT|OUTI|CALL|RET)\\b",
+        "match": "\\b(HALT|LOAD|ADD|ADDI|SUB|SUBI|SHL|SHLI|SHR|SHRI|AND|ANDI|NAND|NANDI|OR|ORI|XOR|XORI|JMP|JM0|JMC|JMN|IN|OUT|OUTI|CALL|RET|INI)\\b",
         "name": "keyword.instruction.custom-asm"
       },
       "numbers": {
