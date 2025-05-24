@@ -1,4 +1,4 @@
-# CPU5.5-ASM-Compiler
+# CPU5-ASM-Compiler
 Simple custom ASM compiler for my CPU5.
 
 # How to use
