@@ -1,42 +1,41 @@
 {
-    "name": "custom-asm-language",
-    "displayName": "Custom ASM Language",
-    "description": "Langage assembleur personnalisé",
-    "version": "0.0.1",
-    "engines": {
-      "vscode": "^1.60.0"
-    },
-    "categories": [
-      "Programming Languages"
+  "name": "custom-asm-language",
+  "displayName": "Custom ASM Language",
+  "description": "Langage assembleur personnalisé",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "custom-asm",
+        "aliases": [
+          "Custom ASM",
+          "custom-asm"
+        ],
+        "extensions": [
+          ".asm"
+        ],
+        "configuration": "./language-configuration.json"
+      }
     ],
-    "contributes": {
-      "languages": [
-        {
-          "id": "custom-asm",
-          "aliases": [
-            "Custom ASM",
-            "custom-asm"
-          ],
-          "extensions": [
-            ".asm"
-          ],
-          "configuration": "./language-configuration.json"
-        }
-      ],
-      "grammars": [
-        {
-          "language": "custom-asm",
-          "scopeName": "source.custom-asm",
-          "path": "./syntaxes/custom-asm.tmLanguage.json"
-        }
-      ],
-      "themes": [
-        {
-          "label": "Custom ASM Theme",
-          "uiTheme": "vs-dark",
-          "path": "./themes/custom-asm-color-theme.json"
-        }
-      ]
-    }
+    "grammars": [
+      {
+        "language": "custom-asm",
+        "scopeName": "source.custom-asm",
+        "path": "./syntaxes/custom-asm.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "Custom ASM Theme",
+        "uiTheme": "vs-dark",
+        "path": "./themes/custom-asm-color-theme.json"
+      }
+    ]
   }
-  
+}
