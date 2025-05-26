@@ -473,7 +473,7 @@
     {
       "scope": "entity.name.function.custom-asm",
       "settings": {
-        "foreground": "#DCDCAA",
+        "foreground": "#e4e426",
         "fontStyle": "bold"
       }
     },
@@ -499,7 +499,7 @@
     {
       "scope": "constant.numeric.custom-asm",
       "settings": {
-        "foreground": "#B5CEA8"
+        "foreground": "#65f518"
       }
     }
   ]
