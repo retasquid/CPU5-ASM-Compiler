@@ -26,7 +26,7 @@ def main():
             mode = 2  # hex output
     except:
         source_file = "main.asm"
-        output_file = "C:/Users/redsq/Documents/logisim/Tang nano 9k/CPU5_9/src/ROM.v"
+        output_file = "C:/{YOUR_PATH}/CPU5_9/src/ROM.v"
         mode = 1
     
     # Helper functions
