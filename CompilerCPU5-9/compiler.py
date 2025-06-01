@@ -2,7 +2,7 @@ import sys
 
 def main():
     # Constants
-    ROM_SIZE = 2048
+    ROM_SIZE = 256
     # Les 4 instructions de saut partagent le même opcode de base (10010)
     COMMANDS = ["HALT", "LOAD", "ADD", "ADDI", "SUB", "SUBI", "SHL", "SHLI", "SHR", "SHRI", 
                 "AND", "ANDI", "NAND", "NANDI", "OR", "ORI", "XOR", "XORI", 
@@ -26,7 +26,7 @@ def main():
             mode = 2  # hex output
     except:
         source_file = "main.asm"
-        output_file = "C:/{YOUR_PATH}/CPU5_9/src/ROM.v"
+        output_file = "D:/FPGA/CPU5_9/CPU5_9/src/ROM.v"
         mode = 1
     
     # Helper functions
@@ -72,21 +72,19 @@ def main():
                 continue
                 
             try:
-                if words[1] == ':':
+                if words[0] in COMMANDS or words[0] in JUMPS:
+                    pc += 1
+                elif words[1] == ':':
                     labels[words[0]] = pc
                 elif words[1].startswith(';') and words[0] not in ["HALT", "CALL", "RET"]:
                     print(f"Error: no argument for instruction but ';' found on line {pc+1}")
                     sys.exit(1)
-                elif words[0] in COMMANDS or words[0] in JUMPS:
-                    pc += 1
             except IndexError:
                 continue
                 
             if pc >= ROM_SIZE:
                 print(f"Error: ROM size: {ROM_SIZE} exceeded")
                 sys.exit(1)
-    
-
     # Second pass: generate machine code
     with open(source_file, "r") as source, open(output_file, "w") as output:
         instruction = ''
@@ -224,6 +222,8 @@ def main():
                          "endmodule\n")
     
     print("\nCompilation terminée\n")
+    print("taille du code : "+str(pc)+" lignes soit "+str(pc<<2)+" Octets")
+
 
 if __name__ == "__main__":
     main()

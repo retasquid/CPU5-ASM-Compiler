@@ -1,61 +1,226 @@
-    ; WRITE_ENABLE 0x06
-    ; WRITE_DISABLE 0x04
-    ; READ_STATUS_REG 0x05
-    ; READ_STATUS_REG2 0x35
-    ; WRITE_STATUS_REG 0x01
-    ; READ_DATA 0x03
-    ; FAST_READ 0x0B
-    ; PAGE_PROGRAM 0x02
-    ; SECTOR_ERASE 0x20      // 4KB
-    ; BLOCK_ERASE_32K 0x52   // 32KB
-    ; BLOCK_ERASE 0xD8       // 64KB
-    ; CHIP_ERASE 0xC7
-    ; READ_ID 0x9F
-    ; ENABLE_QPI 0x35
-    ; RESET_ENABLE 0x66 
-    ; RESET_DEVICE 0x99
 start :
-    ; Initialize the stack pointer
-    LOAD SP 0x40ff  ; Set Stack Pointer to 255
+    LOAD R10 0
+    LOAD R11 1
+    OUTI R11 GPO1
+    LOAD SP 0x40FF
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
 
-    ; Initialize the SPI interface
-    LOAD R0 0x20  ; Initialize R0 to 0x20
-    OUTI R0 CONFSPI  ; Set SPI configuration
-
-    ; Main loop
-    LOAD R0 0x45  ; LOAD command to send
-    OUTI R0 RAM0  ; set it in argument
-
-    CALL            ;store the current address in PC
-    ADDI PC PC 5    ; Increment Program Counter
-    OUT PC SP       ;store the current address in Stack Pointer
-    ADDI SP SP 1    ; Increment Stack Pointer
-    JMP transfert_spi
-    INI R0 RAM0  ; Read the response from SPI
-    OUTI R0 GPO0  ; Send the response to GPO0
-
-    ; Loop forever
-main_loop :
-    JMP main_loop  ; Infinite loop to keep the program running
-
-transfert_spi :  
-    ;take commande in RAM0 and return received commande in RAM0
-    INI R0 RAM0  ;take the commande to send
-    ORI R0 R0  0b0000000100000000 ; Set the send bit
+RESET_EN :
+    LOAD R0 0x166  ; Set the first bit to 1
+    OUTI R10 GPO1
     OUTI R0 SPI
-    ANDI R0 R0 0b1111111011111111 ; Clear the send bit
-    OUTI R0 SPI
-wait_spi_send :
-    ; Wait for the SPI to be ready
+    OUTI R10 SPI
+wait_spi_send6 :
     INI R0 STATUS  ; Read the status register
-    ANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 end_spi_send  ; If end sending, jump
-    JMP wait_spi_send  ; Loop until SPI is ready
-end_spi_send :
-    ;read the response from SPI
-    INI R0 SPI  ; store the response from SPI
-    OUTI R0 RAM0  ; Store the response in RAM0
-    ;return to main loop
-    SUBI SP SP 1  ; Decrement Stack Pointer
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send6  ; If end sending, jump
+    OUTI R11 GPO1
+
+RESET :
+    LOAD R0 0x199  ; Set the first bit to 1
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send7 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send7  ; If end sending, jump
+    OUTI R11 GPO1
+
+;READ
+    CALL
+    ADDI PC PC 5
+    OUT PC SP
+    SUBI SP SP 1
+    JMP READ
+
+WRITE_EN :
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x106 
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send8 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send8  ; If end sending, jump
+    OUTI R11 GPO1
+
+READ_STATUS :
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x105
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send9 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send9  ; If end sending, jump
+
+    LOAD R0 0b00000000
+    OUTI R0 CONFSPI
+    LOAD R0 0x1ff 
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send10 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send10  ; If end sending, jump
+    OUTI R11 GPO1
+    INI R0 SPI
+    ANDI R0 R0 0x02
+    JM0 READ_STATUS
+
+WRITE_PAGE :
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x102  ; Set the first bit to 1
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send11 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send11  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send12 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send12  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send13 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send13  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send14 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send14  ; If end sending, jump
+
+    LOAD R0 312  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send15 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send15  ; If end sending, jump
+    INI R5 SPI  ; Read the response from SPI
+    OUTI R11 GPO1
+    OUTI R5 GPO0
+write_status1 : 
+;READ STATUS
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x105
+    OUTI R0 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send16 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send16  ; If end sending, jump
+
+    LOAD R0 0b00000000
+    OUTI R0 CONFSPI
+    LOAD R0 0x1ff 
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send17 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send17  ; If end sending, jump
+    OUTI R11 GPO1
+    INI R0 SPI
+    OUTI R0 GPO0
+    NANDI R0 R0 0x01
+    JM0 write_status1
+
+WRITE_DISABLE :
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x104 
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send18 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send18  ; If end sending, jump
+    OUTI R11 GPO1
+
+;READ
+    CALL
+    ADDI PC PC 5
+    OUT PC SP
+    SUBI SP SP 1
+    JMP READ
+
+end :
+    JMP end
+
+;FUNCTIONS
+
+READ :
+    LOAD R0 0b00100000
+    OUTI R0 CONFSPI
+    LOAD R0 0x103      
+    OUTI R10 GPO1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send1 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send1  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send2 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send2  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send3 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send3  ; If end sending, jump
+
+    LOAD R0 0x100  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send4 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send4  ; If end sending, jump
+
+    LOAD R0 0b00000000
+    OUTI R0 CONFSPI
+    LOAD R0 0x1ff  ; Set the first bit to 1
+    OUTI R0 SPI
+    OUTI R10 SPI
+wait_spi_send5 :
+    INI R0 STATUS  ; Read the status register
+    NANDI R0 R0 0x01  ; Check if the SPI is busy
+    JM0 wait_spi_send5  ; If end sending, jump
+    INI R5 SPI
+    OUTI R5 GPO0
+    OUTI R11 GPO1
+    ADDI SP SP 1  ; Decrement Stack Pointer
     IN PC SP  ; Read the return adress from Stack Pointer
     RET
