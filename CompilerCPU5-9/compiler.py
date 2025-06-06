@@ -13,6 +13,8 @@ def main():
     REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "PC", "SP"]
     SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9}
     
+    INTERRUPTS = ["interrupt_vector0","interrupt_vector1","interrupt_vector2","interrupt_vector3","interrupt_vector4","interrupt_vector5","interrupt_vector6","interrupt_vector7"]
+
     # Parse input arguments
     try:
         source_file = sys.argv[1]
@@ -22,11 +24,13 @@ def main():
             mode = 0  # binary output
         elif output_file.endswith(".v"):
             mode = 1  # Verilog ROM output
+        elif output_file.endswith(".h"):
+            mode = 3  # Verilog ROM output
         else:
             mode = 2  # hex output
     except:
         source_file = "main.asm"
-        output_file = "D:/FPGA/CPU5_9/CPU5_9/src/ROM.v"
+        output_file = "C:/{your_path}/ROM.v"
         mode = 1
     
     # Helper functions
@@ -64,6 +68,7 @@ def main():
     # First pass: collect labels
     labels = {}
     pc = 0
+    endPC = 0
     
     with open(source_file, "r") as source:
         for line in source:
@@ -96,7 +101,9 @@ def main():
                          ");\n"
                          "    reg[28:0] data [2047:0];\n"
                          "    initial begin\n")
-        
+        elif mode == 3:
+            output.write("char code["+str(pc<<2)+"] = {\n")
+        endPC = pc
         pc = 0
         for line in source:
             words = line.strip().split()
@@ -199,9 +206,9 @@ def main():
                     print(f"Error: {words[0]} instruction without target on line {pc+1}")
                     sys.exit(1)
             elif words[0] == "RET":
-                instruction = to_binary(COMMANDS.index(words[0]),5)+"0000"+"1110"+"0" * 16
+                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 12
             elif words[0] == "CALL":
-                instruction = to_binary(COMMANDS.index(words[0]),5)+"1110"+"0" * 20
+                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"11"
 
             if mode == 0:
                 output.write(instruction + '\n')
@@ -209,17 +216,42 @@ def main():
                 output.write(to_verilog(instruction, pc))
             elif mode == 2:
                 output.write(to_hex8(instruction) + '\n')
+            elif mode == 3:
+                byte1=int(to_hex8(instruction),16)>>24
+                byte2=(int(to_hex8(instruction),16)>>16)&0xFF
+                byte3=(int(to_hex8(instruction),16)>>8)&0xFF
+                byte4=int(to_hex8(instruction),16)&0xFF
+                if(pc!=endPC-1):
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+",\n")
+                else :
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x')))
             pc += 1
         
         # Write Verilog footer if needed
         if mode == 1:
+            for i in range(0,8):
+                if INTERRUPTS[i] in labels :
+                    output.write("        data["+str(ROM_SIZE-8+i)+"] = 29'h1200"+str(format(labels[INTERRUPTS[i]],'02x'))+";\n")
             output.write("    end\n"
-                         "    \n"
-                         "    // Lecture synchrone ou asynchrone de la ROM\n"
-                         "    always @(*) begin\n"
-                         "        DataROM = data[AddrROM];\n"
-                         "    end\n"
-                         "endmodule\n")
+                        "    \n"
+                        "    // Lecture synchrone ou asynchrone de la ROM\n"
+                        "    always @(*) begin\n"
+                        "        DataROM = data[AddrROM];\n"
+                        "    end\n"
+                        "endmodule\n")
+        elif mode == 3:
+            output.write("};")
+
+            output.write("\n\nchar vector_table[32] = {\n")
+            
+            for i in range(0,8):
+                byte1 = labels[INTERRUPTS[i]]>>8
+                byte2 = labels[INTERRUPTS[i]]&0xFF
+                if INTERRUPTS[i] in labels :
+                    if i==7 :
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"};\n")
+                    else :
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+",\n")
     
     print("\nCompilation terminée\n")
     print("taille du code : "+str(pc)+" lignes soit "+str(pc<<2)+" Octets")

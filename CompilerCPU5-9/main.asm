@@ -1,226 +1,141 @@
+
+
 start :
-    LOAD R10 0
-    LOAD R11 1
-    OUTI R11 GPO1
-    LOAD SP 0x40FF
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
+    LOAD SP 0x40ff
+    LOAD R0 1
+    OUTI R0 BAUDH
+    LOAD R0 0xC5E8
+    OUTI R0 BAUDL
 
-RESET_EN :
-    LOAD R0 0x166  ; Set the first bit to 1
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send6 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send6  ; If end sending, jump
-    OUTI R11 GPO1
-
-RESET :
-    LOAD R0 0x199  ; Set the first bit to 1
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send7 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send7  ; If end sending, jump
-    OUTI R11 GPO1
-
-;READ
+loop :
+    LOAD R0 72
+    OUTI R0 RAM0
     CALL
-    ADDI PC PC 5
-    OUT PC SP
     SUBI SP SP 1
-    JMP READ
-
-WRITE_EN :
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x106 
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send8 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send8  ; If end sending, jump
-    OUTI R11 GPO1
-
-READ_STATUS :
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x105
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send9 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send9  ; If end sending, jump
-
-    LOAD R0 0b00000000
-    OUTI R0 CONFSPI
-    LOAD R0 0x1ff 
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send10 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send10  ; If end sending, jump
-    OUTI R11 GPO1
-    INI R0 SPI
-    ANDI R0 R0 0x02
-    JM0 READ_STATUS
-
-WRITE_PAGE :
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x102  ; Set the first bit to 1
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send11 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send11  ; If end sending, jump
-
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send12 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send12  ; If end sending, jump
-
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send13 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send13  ; If end sending, jump
-
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send14 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send14  ; If end sending, jump
-
-    LOAD R0 312  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send15 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send15  ; If end sending, jump
-    INI R5 SPI  ; Read the response from SPI
-    OUTI R11 GPO1
-    OUTI R5 GPO0
-write_status1 : 
-;READ STATUS
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x105
-    OUTI R0 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send16 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send16  ; If end sending, jump
-
-    LOAD R0 0b00000000
-    OUTI R0 CONFSPI
-    LOAD R0 0x1ff 
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send17 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send17  ; If end sending, jump
-    OUTI R11 GPO1
-    INI R0 SPI
-    OUTI R0 GPO0
-    NANDI R0 R0 0x01
-    JM0 write_status1
-
-WRITE_DISABLE :
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x104 
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send18 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send18  ; If end sending, jump
-    OUTI R11 GPO1
-
-;READ
+    JMP send_uart
+    
+    LOAD R0 105
+    OUTI R0 RAM0
     CALL
-    ADDI PC PC 5
-    OUT PC SP
     SUBI SP SP 1
-    JMP READ
+    JMP send_uart
+    
+    LOAD R0 58
+    OUTI R0 RAM0
+    CALL
+    SUBI SP SP 1
+    JMP send_uart
+    
+    LOAD R0 32
+    OUTI R0 RAM0
+    CALL
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 34562
+    OUTI R0 RAM0
+    CALL
+    SUBI SP SP 1
+    JMP print_number
 
 end :
     JMP end
 
-;FUNCTIONS
 
-READ :
-    LOAD R0 0b00100000
-    OUTI R0 CONFSPI
-    LOAD R0 0x103      
-    OUTI R10 GPO1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send1 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send1  ; If end sending, jump
 
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send2 :
+send_uart :
+    INI R0 RAM0  ;take the commande to send
+    ORI R0 R0 0b0000000100000000 ; Set the send bit
+    OUTI R0 UART
+    ANDI R0 R0 0b1111111011111111 ; Clear the send bit
+    OUTI R0 UART
+wait_uart_send :
     INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send2  ; If end sending, jump
-
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send3 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send3  ; If end sending, jump
-
-    LOAD R0 0x100  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send4 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send4  ; If end sending, jump
-
-    LOAD R0 0b00000000
-    OUTI R0 CONFSPI
-    LOAD R0 0x1ff  ; Set the first bit to 1
-    OUTI R0 SPI
-    OUTI R10 SPI
-wait_spi_send5 :
-    INI R0 STATUS  ; Read the status register
-    NANDI R0 R0 0x01  ; Check if the SPI is busy
-    JM0 wait_spi_send5  ; If end sending, jump
-    INI R5 SPI
-    OUTI R5 GPO0
-    OUTI R11 GPO1
+    ANDI R0 R0 0x02  ; Check if the UART is busy
+    JM0 end_uart_send  ; If end sending, jump
+    JMP wait_uart_send  ; Loop until UART is ready
+end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
-    IN PC SP  ; Read the return adress from Stack Pointer
+    RET
+
+
+
+
+print_number :
+    LOAD R0 0x0000  ; BCDL
+    LOAD R1 0x0000  ; BCDH
+    INI R2 RAM0  ; Load the binary number from RAM0
+    LOAD R3 0x0000  ; i
+i_loop :
+    LOAD R4 0x0000  ; j
+j_loop :
+    SHR R10 R0 R4   ;if (((bcd >> j) & 0xF) >= 5)
+    ANDI R10 R10 0xF
+    SUBI R10 R10 5
+    JMN else   ;{
+    LOAD R10 3      ;bcdl += (3 << j)
+    SHL R10 R10 R4
+    ADD R0 R0 R10   ;}
+else :
+    ADDI R4 R4 4    ;for (int j = 0; j < 16; j+=4)
+    SUBI R10 R4 16
+    JMN j_loop
+    ANDI R10 R1 0xF
+    SUBI R10 R10 5
+    JMN else2   ;{
+    ADDI R1 R1 3      ;bcdh += 3
+else2 :
+    SHLI R10 R1 1    ;bcdH = (bcdH << 1) | (bcdL>>15);
+    SHRI R11 R0 15
+    OR R1 R10 R11
+    SHLI R10 R0 1    ;bcdL = (bcdL << 1) | (binary >> 15);
+    SHRI R11 R2 15
+    OR R0 R10 R11
+    SHLI R2 R2 1    ;binary <<= 1;
+    ADDI R3 R3 1    ;for (int i = 0; i < 16; i++)
+    SUBI R10 R3 16
+    JMN i_loop   
+digit1 :
+    ANDI R8 R1 0xF
+    JM0 digit2
+    ADDI R8 R8 0x130
+    OUTI R8 UART   ; Send the high nibble to UART
+    ANDI R8 R8 0x003F
+    OUTI R8 UART   ; Send a space character to UART
+digit2 :
+    ANDI R9 R0 0xF000
+    ADD R10 R9 R8
+    JM0 digit3
+    SHRI R8 R9 12
+    ADDI R8 R8 0x130
+    OUTI R8 UART   ; Send the high nibble to UART
+    ANDI R8 R8 0x003F
+    OUTI R8 UART   ; Send a space character to UART
+digit3 :
+    ANDI R10 R0 0xF00
+    ADD R8 R10 R9
+    JM0 digit4
+    SHRI R8 R10 8
+    ADDI R8 R8 0x130
+    OUTI R8 UART   ; Send the high nibble to UART
+    ANDI R8 R8 0x003F
+    OUTI R8 UART   ; Send a space character to UART
+digit4 :
+    ANDI R11 R0 0xF0
+    ADD R10 R11 R10
+    JM0 digit5
+    SHRI R8 R11 4
+    ADDI R8 R8 0x130
+    OUTI R8 UART   ; Send the high nibble to UART
+    ANDI R8 R8 0x003F
+    OUTI R8 UART   ; Send a space character to UART
+digit5 :
+    ANDI R8 R0 0xF
+    ADDI R8 R8 0x130
+    OUTI R8 UART   ; Send the high nibble to UART
+    ANDI R8 R8 0x003F
+    OUTI R8 UART   ; Send a space character to UART
+    OUTI R0 0x4000   ;return bcd;
+    OUTI R1 0x4001   ;return bcd;
+    ADDI SP SP 1  
     RET

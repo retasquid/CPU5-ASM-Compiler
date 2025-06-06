@@ -11,7 +11,6 @@ wait_uart_send :
     JMP wait_uart_send  ; Loop until UART is ready
 end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
-    IN PC SP  ; Read the return adress from Stack Pointer
     RET
 
 send_uart_string :
@@ -32,7 +31,6 @@ wait_uart_send :
     JMP wait_uart_send  ; Loop until UART is ready
 end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
-    IN PC SP  ; Read the return adress from Stack Pointer
     RET
 
 transfert_spi :  
@@ -50,7 +48,6 @@ end_spi_send :
     INI R0 SPI  ; store the response from SPI
     OUTI R0 RAM0  ; Store the response in RAM0
     ADDI SP SP 1  ; Decrement Stack Pointer
-    IN PC SP  ; Read the return adress from Stack Pointer
     RET
 
 print_number :
@@ -130,7 +127,6 @@ digit5 :
     OUTI R0 0x4000   ;return bcd;
     OUTI R1 0x4001   ;return bcd;
     ADDI SP SP 1  
-    IN PC SP  
     RET
 
 
