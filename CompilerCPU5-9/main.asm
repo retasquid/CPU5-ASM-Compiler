@@ -1,50 +1,134 @@
-
-
 start :
     LOAD SP 0x40ff
-    LOAD R0 1
+    LOAD R0 0
     OUTI R0 BAUDH
-    LOAD R0 0xC5E8
+    LOAD R0 9602
     OUTI R0 BAUDL
-
 loop :
-    LOAD R0 72
-    OUTI R0 RAM0
     CALL
     SUBI SP SP 1
-    JMP send_uart
-    
-    LOAD R0 105
-    OUTI R0 RAM0
-    CALL
-    SUBI SP SP 1
-    JMP send_uart
-    
-    LOAD R0 58
-    OUTI R0 RAM0
-    CALL
-    SUBI SP SP 1
-    JMP send_uart
-    
-    LOAD R0 32
-    OUTI R0 RAM0
-    CALL
-    SUBI SP SP 1
-    JMP send_uart
+    JMP LOAD_phrase
+    LOAD R1 1
 
-    LOAD R0 34562
-    OUTI R0 RAM0
-    CALL
+ecoute : 
+    INI R0 UART
+    SUBI R0 R0 0
+    JM0 ecoute
+    SUBI R10 R0 13
+    JM0 entree
+    CALL 
     SUBI SP SP 1
-    JMP print_number
+    JMP send_uart
+    JMP ecoute
+
+entree :
+
+backspace : 
 
 end :
     JMP end
 
 
+LOAD_phrase :
+    LOAD R0 0x45    ;E 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x6e    ;n 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x74    ;t 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x72    ;r 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x65    ;e 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x7a    ;z 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x75    ;u 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x6e    ;n 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x6e    ;n 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x6f    ;o 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x6d    ;m 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x62    ;b 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x72    ;r 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x65    ;e 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x3a    ;: 
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP send_uart
+
+    ADDI SP SP 1
+    RET
 
 send_uart :
-    INI R0 RAM0  ;take the commande to send
     ORI R0 R0 0b0000000100000000 ; Set the send bit
     OUTI R0 UART
     ANDI R0 R0 0b1111111011111111 ; Clear the send bit
@@ -57,85 +141,4 @@ wait_uart_send :
 end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
     RET
-
-
-
-
-print_number :
-    LOAD R0 0x0000  ; BCDL
-    LOAD R1 0x0000  ; BCDH
-    INI R2 RAM0  ; Load the binary number from RAM0
-    LOAD R3 0x0000  ; i
-i_loop :
-    LOAD R4 0x0000  ; j
-j_loop :
-    SHR R10 R0 R4   ;if (((bcd >> j) & 0xF) >= 5)
-    ANDI R10 R10 0xF
-    SUBI R10 R10 5
-    JMN else   ;{
-    LOAD R10 3      ;bcdl += (3 << j)
-    SHL R10 R10 R4
-    ADD R0 R0 R10   ;}
-else :
-    ADDI R4 R4 4    ;for (int j = 0; j < 16; j+=4)
-    SUBI R10 R4 16
-    JMN j_loop
-    ANDI R10 R1 0xF
-    SUBI R10 R10 5
-    JMN else2   ;{
-    ADDI R1 R1 3      ;bcdh += 3
-else2 :
-    SHLI R10 R1 1    ;bcdH = (bcdH << 1) | (bcdL>>15);
-    SHRI R11 R0 15
-    OR R1 R10 R11
-    SHLI R10 R0 1    ;bcdL = (bcdL << 1) | (binary >> 15);
-    SHRI R11 R2 15
-    OR R0 R10 R11
-    SHLI R2 R2 1    ;binary <<= 1;
-    ADDI R3 R3 1    ;for (int i = 0; i < 16; i++)
-    SUBI R10 R3 16
-    JMN i_loop   
-digit1 :
-    ANDI R8 R1 0xF
-    JM0 digit2
-    ADDI R8 R8 0x130
-    OUTI R8 UART   ; Send the high nibble to UART
-    ANDI R8 R8 0x003F
-    OUTI R8 UART   ; Send a space character to UART
-digit2 :
-    ANDI R9 R0 0xF000
-    ADD R10 R9 R8
-    JM0 digit3
-    SHRI R8 R9 12
-    ADDI R8 R8 0x130
-    OUTI R8 UART   ; Send the high nibble to UART
-    ANDI R8 R8 0x003F
-    OUTI R8 UART   ; Send a space character to UART
-digit3 :
-    ANDI R10 R0 0xF00
-    ADD R8 R10 R9
-    JM0 digit4
-    SHRI R8 R10 8
-    ADDI R8 R8 0x130
-    OUTI R8 UART   ; Send the high nibble to UART
-    ANDI R8 R8 0x003F
-    OUTI R8 UART   ; Send a space character to UART
-digit4 :
-    ANDI R11 R0 0xF0
-    ADD R10 R11 R10
-    JM0 digit5
-    SHRI R8 R11 4
-    ADDI R8 R8 0x130
-    OUTI R8 UART   ; Send the high nibble to UART
-    ANDI R8 R8 0x003F
-    OUTI R8 UART   ; Send a space character to UART
-digit5 :
-    ANDI R8 R0 0xF
-    ADDI R8 R8 0x130
-    OUTI R8 UART   ; Send the high nibble to UART
-    ANDI R8 R8 0x003F
-    OUTI R8 UART   ; Send a space character to UART
-    OUTI R0 0x4000   ;return bcd;
-    OUTI R1 0x4001   ;return bcd;
-    ADDI SP SP 1  
-    RET
+    CONFINT

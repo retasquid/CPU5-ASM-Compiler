@@ -2,7 +2,7 @@ import sys
 
 def main():
     # Constants
-    ROM_SIZE = 256
+    ROM_SIZE = 65536
     # Les 4 instructions de saut partagent le même opcode de base (10010)
     COMMANDS = ["HALT", "LOAD", "ADD", "ADDI", "SUB", "SUBI", "SHL", "SHLI", "SHR", "SHRI", 
                 "AND", "ANDI", "NAND", "NANDI", "OR", "ORI", "XOR", "XORI", 
@@ -11,7 +11,7 @@ def main():
     JUMPS = ["JMP", "JM0", "JMC", "JMN"]
 
     REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "PC", "SP"]
-    SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9}
+    SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9, "CONFINT":10}
     
     INTERRUPTS = ["interrupt_vector0","interrupt_vector1","interrupt_vector2","interrupt_vector3","interrupt_vector4","interrupt_vector5","interrupt_vector6","interrupt_vector7"]
 
@@ -25,12 +25,12 @@ def main():
         elif output_file.endswith(".v"):
             mode = 1  # Verilog ROM output
         elif output_file.endswith(".h"):
-            mode = 3  # Verilog ROM output
+            mode = 3  #flasher header
         else:
             mode = 2  # hex output
     except:
         source_file = "main.asm"
-        output_file = "C:/{your_path}/ROM.v"
+        output_file = "D:/FPGA/CPU5_9/CPU5_9/src/ROM.v"
         mode = 1
     
     # Helper functions
@@ -67,7 +67,10 @@ def main():
 
     # First pass: collect labels
     labels = {}
-    pc = 0
+    if mode == 3:
+        pc = 1024
+    else :
+        pc = 0
     endPC = 0
     
     with open(source_file, "r") as source:
@@ -90,6 +93,10 @@ def main():
             if pc >= ROM_SIZE:
                 print(f"Error: ROM size: {ROM_SIZE} exceeded")
                 sys.exit(1)
+
+
+
+
     # Second pass: generate machine code
     with open(source_file, "r") as source, open(output_file, "w") as output:
         instruction = ''
@@ -102,9 +109,12 @@ def main():
                          "    reg[28:0] data [2047:0];\n"
                          "    initial begin\n")
         elif mode == 3:
-            output.write("char code["+str(pc<<2)+"] = {\n")
+            output.write("char code["+str((pc-1024)<<2)+"] = {\n")
         endPC = pc
-        pc = 0
+        if mode == 3:
+            pc = 1024
+        else :
+            pc = 0
         for line in source:
             words = line.strip().split()
             if not words or words[0].startswith(';') or words[0] in labels:
@@ -208,7 +218,7 @@ def main():
             elif words[0] == "RET":
                 instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 12
             elif words[0] == "CALL":
-                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"11"
+                instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"10"
 
             if mode == 0:
                 output.write(instruction + '\n')
@@ -221,10 +231,10 @@ def main():
                 byte2=(int(to_hex8(instruction),16)>>16)&0xFF
                 byte3=(int(to_hex8(instruction),16)>>8)&0xFF
                 byte4=int(to_hex8(instruction),16)&0xFF
-                if(pc!=endPC-1):
-                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+",\n")
+                if(pc==(endPC-1)):
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+"\n")
                 else :
-                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x')))
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+",\n")
             pc += 1
         
         # Write Verilog footer if needed
@@ -245,16 +255,19 @@ def main():
             output.write("\n\nchar vector_table[32] = {\n")
             
             for i in range(0,8):
-                byte1 = labels[INTERRUPTS[i]]>>8
-                byte2 = labels[INTERRUPTS[i]]&0xFF
                 if INTERRUPTS[i] in labels :
+                    byte1 = labels[INTERRUPTS[i]]>>8
+                    byte2 = labels[INTERRUPTS[i]]&0xFF
                     if i==7 :
-                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"};\n")
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n")
                     else :
                         output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+",\n")
-    
+                else :
+                    output.write("0x17, 0x00, 0xF0, 0x00,\n")
+            output.write("};\n")
+
     print("\nCompilation terminée\n")
-    print("taille du code : "+str(pc)+" lignes soit "+str(pc<<2)+" Octets")
+    print("taille du code : "+str(pc-1024)+" lignes soit "+str((pc<<2)-4096)+" Octets")
 
 
 if __name__ == "__main__":

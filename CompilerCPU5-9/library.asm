@@ -13,6 +13,9 @@ end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
     RET
 
+
+
+
 send_uart_string :
     INI R0 RAM0  ;take the pointer to send
 read_char :
@@ -33,6 +36,9 @@ end_uart_send :
     ADDI SP SP 1  ; Decrement Stack Pointer
     RET
 
+
+
+
 transfert_spi :  
     INI R0 RAM0  ;take the commande to send
     ORI R0 R0  0b0000000100000000 ; Set the send bit
@@ -49,6 +55,9 @@ end_spi_send :
     OUTI R0 RAM0  ; Store the response in RAM0
     ADDI SP SP 1  ; Decrement Stack Pointer
     RET
+
+
+
 
 print_number :
     LOAD R0 0x0000  ; BCDL
@@ -130,99 +139,3 @@ digit5 :
     RET
 
 
-; RESET ENABLE
-    LOAD R0 0x166  ; Set the first bit to 1
-    LOAD R12 0x0
-    OUTI R12 GPO1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send1 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send1  ; If end sending, jump
-    JMP wait_spi_send1  ; Loop until SPI is ready
-end_spi_send1 :
-    LOAD R12 0x1
-    OUTI R12 GPO1
-
-; RESET
-    LOAD R0 0x199  ; Set the first bit to 1
-    LOAD R12 0x0
-    OUTI R12 GPO1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send2 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send2  ; If end sending, jump
-    JMP wait_spi_send2  ; Loop until SPI is ready
-end_spi_send2 :
-    LOAD R12 0x1
-    OUTI R12 GPO1
-
-; READ STATUS
-    LOAD R0 0x105  ; Set the first bit to 1
-    LOAD R12 0x0
-    OUTI R12 GPO1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send3 :    
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send3  ; If end sending, jump
-    JMP wait_spi_send3  ; Loop until SPI is ready
-end_spi_send3 :
-    LOAD R0 0x1ff  ; Set the first bit to 1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send4 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send4  ; If end sending, jump
-    JMP wait_spi_send4  ; Loop until SPI is ready
-end_spi_send4 :
-    LOAD R12 0x1
-    OUTI R12 GPO1
-
-; READ ID
-    LOAD R0 0x19F  ; Set the first bit to 1
-    LOAD R12 0x0
-    OUTI R12 GPO1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send5 :    
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send5  ; If end sending, jump
-    JMP wait_spi_send5  ; Loop until SPI is ready
-end_spi_send5 :
-    LOAD R0 0x1ff  ; Set the first bit to 1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send6 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send6  ; If end sending, jump
-    JMP wait_spi_send6  ; Loop until SPI is ready
-end_spi_send6 :
-    INI R10 SPI  ; store the response from SPI
-    LOAD R0 0x1ff  ; Set the first bit to 1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send7 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send7  ; If end sending, jump
-    JMP wait_spi_send7  ; Loop until SPI is ready
-end_spi_send7 :
-    LOAD R0 0x1ff  ; Set the first bit to 1
-    OUTI R0 SPI
-    LOAD R0 6  ; Set the first bit to 1
-    OUTI R0 SPI
-wait_spi_send8 :
-    SUBI R0 R0 1  ; Check if the SPI is busy
-    JM0 end_spi_send8  ; If end sending, jump
-    JMP wait_spi_send8  ; Loop until SPI is ready
-end_spi_send8 :
-    LOAD R12 0x1
-    OUTI R12 GPO1
