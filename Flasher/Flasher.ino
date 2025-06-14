@@ -1,15 +1,16 @@
+// Tableau de données à écrire
 #include "prog.h"
 
-#define CSn 8    // Chip Select
-#define SO 9     // Serial Output (MISO - Master In Slave Out)
-#define SCLK 10   // Serial Clock
+#define SCLK 13   // Serial Clock
+#define SO 12     // Serial Output (MISO - Master In Slave Out)
 #define SI 11     // Serial Input (MOSI - Master Out Slave In)
+#define CSn 10    // Chip Select
 
-// Instructions pour MX25L3233F - identiques à la plupart des mémoires flash SPI
+// Instructions pour MX25L3233F
 #define WRITE_ENABLE 0x06
 #define WRITE_DISABLE 0x04
 #define READ_STATUS_REG 0x05
-#define READ_STATUS_REG2 0x35    // Registre de statut 2 (peut être différent selon les puces)
+#define READ_STATUS_REG2 0x35
 #define WRITE_STATUS_REG 0x01
 #define READ_DATA 0x03
 #define FAST_READ 0x0B
@@ -17,79 +18,253 @@
 #define SECTOR_ERASE 0x20        // 4KB
 #define BLOCK_ERASE_32K 0x52     // 32KB
 #define BLOCK_ERASE 0xD8         // 64KB
-#define CHIP_ERASE 0xC7          // Ou 0x60 pour certaines puces
+#define CHIP_ERASE 0xC7
 #define READ_ID 0x9F
-#define ENABLE_QPI 0x35          // MX25L3233F peut supporter le mode QPI
-#define RESET_ENABLE 0x66        // Instructions de reset
+#define RESET_ENABLE 0x66
 #define RESET_DEVICE 0x99
 
+// Mode de fonctionnement
+#define MODE_READ 1
+#define MODE_WRITE 0
+#define MODE MODE_WRITE  // Changez ici pour basculer entre lecture/écriture
 
-#define read 1
-#define write 0
-#define MODE write
-
+// Adresse d'écriture/lecture
+#define WRITE_ADDRESS 0x1000  // Utiliser une adresse alignée sur un secteur
+#define ROM_SIZE 262143
 void setup() {
   // Configuration des broches
   pinMode(CSn, OUTPUT);
   pinMode(SCLK, OUTPUT);
   pinMode(SI, OUTPUT);
   pinMode(SO, INPUT);
-  
   // État initial des broches
   digitalWrite(CSn, HIGH);    // Désactiver la puce
   
   // Initialiser la communication série pour le débogage
   Serial.begin(9600);
+  while (!Serial) { ; }  // Attendre que le port série soit prêt
   
+  Serial.println(F("\n\n=== EEPROM MX25L PROGRAMMER ===\n"));
   // Configuration initiale de l'EEPROM
   EEPROMsetup();
-}
-
-void loop() {
-  if(MODE){
-    Serial.println("Lecture de la puce MX25L3233F:");
-    char data[256];
-    for(int pc=0; pc<(sizeof(code)>>8); pc++){
-      EEPROMread(pc, data, 256);
-      for(int i=0; i<4; i++){
-        Serial.print(" 0x");
-        Serial.print(data[pc+i]);
-      }
-      Serial.println("");
-    }
-  }else{
-    Serial.println("Ecriture de la puce MX25L3233F:");
-    for(int pc=0; pc<(sizeof(code)>>8); pc++){
-      EEPROMwrite(pc, code, 256);
-      for(int i=0; i<4; i++){
-        Serial.print(" 0x");
-        Serial.print(code[pc+i]);
-      }
-      Serial.println("");
-    }
+    // Afficher l'ID de la puce à chaque cycle
+  Serial.println(F("\n--- Lecture ID ---"));
+  uint8_t id[3];
+  readID(id);
+  Serial.print(F("ID fabricant: 0x"));
+  Serial.println(id[0], HEX);
+  Serial.print(F("Type de mémoire: 0x"));
+  Serial.println(id[1], HEX);
+  Serial.print(F("Capacité: 0x"));
+  Serial.print(id[2], HEX);
+  Serial.print(F(" / "));
+  unsigned long taille = 1<<(id[2]-17);
+  Serial.print(taille);
+  Serial.print(F(" Megabits\n"));
+  
+  // Vérifier si c'est bien une puce Macronix
+  if(id[0] != 0xC2) {
+    Serial.println(F("ATTENTION: Puce non reconnue ou problème de communication!"));
+    delay(1000);
+    return;
+  }
+  
+  if(MODE == MODE_READ) {
+    performRead();
+  } else {
+    performWrite();
+    // Après écriture, passer en mode lecture pour éviter d'écrire en continu
+    // Commentez la ligne suivante si vous voulez rester en mode écriture
+    // MODE = MODE_READ;
   }
 }
 
+void loop() {
+
+}
+
+void performRead() {
+  Serial.println(F("=== DEBUT LECTURE ==="));
+  Serial.print(F("Lecture à l'adresse 0x"));
+  Serial.println(WRITE_ADDRESS, HEX);
+  
+  uint8_t data[sizeof(code)];
+  EEPROMread(WRITE_ADDRESS, data, sizeof(code));
+  
+  Serial.println(F("Données lues:"));
+  printHexData(data, sizeof(code));
+}
+
+void performWrite() {
+  Serial.println(F("=== DEBUT ECRITURE ==="));
+  
+  // 1. Afficher les données à écrire
+  Serial.println(F("Données à écrire:"));
+  printHexData((uint8_t*)code, sizeof(code));
+  
+  // 2. Effacer le secteur avant écriture
+  Serial.print(F("Effacement du secteur à l'adresse 0x"));
+  Serial.println(WRITE_ADDRESS, HEX);
+  sectorErase(WRITE_ADDRESS);
+  
+  // 3. Écrire les données
+  Serial.print(F("Écriture de "));
+  Serial.print(sizeof(code));
+  Serial.print(F(" octets à l'adresse 0x"));
+  Serial.println(WRITE_ADDRESS, HEX);
+  
+  writeMultiplePages(WRITE_ADDRESS, (uint8_t*)code, sizeof(code));
+  
+  Serial.println(F("Écriture vector table"));
+
+  // Calculer l'adresse de la table vectorielle (fin de ROM)
+  uint32_t vectorAddress = ROM_SIZE - 31; // 65536 - 32 = 65504 (0xFFE0)
+  
+  // Vérifier si la table vectorielle est dans le même secteur que le code principal
+  uint32_t codeSector = WRITE_ADDRESS & 0xFFFFF000;
+  uint32_t vectorSector = vectorAddress & 0xFFFFF000;
+  
+  Serial.print(F("Secteur du code: 0x"));
+  Serial.println(codeSector, HEX);
+  Serial.print(F("Secteur de la table vectorielle: 0x"));
+  Serial.println(vectorSector, HEX);
+  
+  // Effacer le secteur de la table vectorielle seulement s'il est différent
+  if(vectorSector != codeSector) {
+    Serial.print(F("Effacement du secteur pour la table vectorielle à 0x"));
+    Serial.println(vectorSector, HEX);
+    sectorErase(vectorSector);
+  } else {
+    Serial.println(F("Table vectorielle dans le même secteur - pas d'effacement supplémentaire"));
+  }
+  
+  writeMultiplePages(vectorAddress, (uint8_t*)vector_table, 32);
+
+  Serial.println(F("Écriture terminée"));
+  
+  // 4. Vérification du code principal
+  Serial.println(F("\n=== VERIFICATION CODE ==="));
+  uint8_t readData[sizeof(code)];
+  EEPROMread(WRITE_ADDRESS, readData, sizeof(code));
+  
+  Serial.println(F("Données lues après écriture:"));
+  printHexData(readData, sizeof(code));
+  
+  // 5. Comparaison code
+  bool success1 = verifyData((uint8_t*)code, readData, sizeof(code));
+
+  // 6. Vérification vector table 
+  Serial.println(F("\n=== VERIFICATION VECTOR TABLE ==="));
+  uint8_t readDataVector[32];
+  EEPROMread(vectorAddress, readDataVector, 32);
+  
+  Serial.println(F("Table vectorielle lue après écriture:"));
+  printHexData(readDataVector, 32);
+  
+  // 7. Comparaison vector table
+  bool success2 = verifyData((uint8_t*)vector_table, readDataVector, 32);
+
+  if(success1 && success2) {
+    Serial.println(F("✓ VERIFICATION REUSSIE - Données correctement écrites!"));
+  } else {
+    Serial.println(F("✗ ERREUR - Données corrompues!"));
+  }
+}
+
+// Afficher des données en hexadécimal avec formatage amélioré
+void printHexData(const uint8_t *data, uint16_t length) {
+  for(uint16_t i = 0; i < length; i++) {
+    if(i % 16 == 0) {
+      Serial.print("0x");
+      if(i < 0x10) Serial.print("0");
+      if(i < 0x100) Serial.print("0");
+      Serial.print(i, HEX);
+      Serial.print(": ");
+    }
+    
+    if(data[i] < 0x10) Serial.print("0");
+    Serial.print(data[i], HEX);
+    Serial.print(" ");
+    
+    if((i + 1) % 16 == 0) {
+      Serial.println();
+    } else if((i + 1) % 4 == 0) {
+      Serial.print(" ");
+    }
+  }
+  if(length % 16 != 0) Serial.println();
+}
+
+// Vérifier que les données lues correspondent aux données écrites
+bool verifyData(const uint8_t *expected, const uint8_t *actual, uint16_t length) {
+  for(uint16_t i = 0; i < length; i++) {
+    if(expected[i] != actual[i]) {
+      Serial.print("ERREUR à l'offset ");
+      Serial.print(i);
+      Serial.print(": attendu 0x");
+      if(expected[i] < 0x10) Serial.print("0");
+      Serial.print(expected[i], HEX);
+      Serial.print(", lu 0x");
+      if(actual[i] < 0x10) Serial.print("0");
+      Serial.println(actual[i], HEX);
+      return false;
+    }
+  }
+  return true;
+}
+
+// Écriture sur plusieurs pages (gère automatiquement les limites)
+void writeMultiplePages(uint32_t address, uint8_t *data, uint16_t length) {
+  uint16_t bytesWritten = 0;
+  
+  Serial.println("Début écriture multi-pages:");
+  
+  while(bytesWritten < length) {
+    uint32_t currentAddress = address + bytesWritten;
+    uint16_t pageOffset = currentAddress & 0xFF;  // Position dans la page courante
+    uint16_t bytesInPage = 256 - pageOffset;      // Octets restants dans la page
+    uint16_t bytesToWrite = min(bytesInPage, length - bytesWritten);
+    
+    Serial.print(F("  Écriture page: "));
+    Serial.print(bytesToWrite);
+    Serial.print(F(" octets à 0x"));
+    Serial.print(currentAddress, HEX);
+    
+    EEPROMwrite(currentAddress, data + bytesWritten, bytesToWrite);
+    
+    Serial.println(F(" - OK"));
+    bytesWritten += bytesToWrite;
+  }
+  
+  Serial.print("Total écrit: ");
+  Serial.print(bytesWritten);
+  Serial.println(" octets");
+}
+
 void EEPROMsetup() {
-  Serial.println("Initialisation de l'EEPROM MX25L3233F...");
+  Serial.println(F("Initialisation de l'EEPROM MX25L..."));
   
   // Reset de la puce pour s'assurer qu'elle est dans un état connu
   resetDevice();
   
   // Vérifier que la puce est prête
   uint8_t status = readStatus();
-  Serial.print("Statut initial: 0x");
-  Serial.println(status, HEX);
+  
+  // Interpréter le statut
+  if(status & 0x01) Serial.println(F("  - Opération en cours (BUSY)"));
+  if(status & 0x02) Serial.println(F("  - Écriture activée (WEL)"));
+  if(status & 0x3C) Serial.println(F("  - Protection active"));
   
   // Si nécessaire, déverrouiller la protection en écriture
-  if(status & 0x3C) {  // Si des bits de protection sont actifs
+  if(status & 0x3C) {
+    Serial.println(F("Désactivation de la protection..."));
     writeEnable();
-    writeStatus(0x00);  // Désactiver toutes les protections
-    Serial.println("Protection en écriture désactivée");
+    writeStatus(0x00);
+    Serial.println(F("Protection désactivée"));
   }
 }
 
-void resetDevice() {
+void resetDevice() {  
   digitalWrite(CSn, LOW);
   sendByte(RESET_ENABLE);
   digitalWrite(CSn, HIGH);
@@ -99,7 +274,8 @@ void resetDevice() {
   sendByte(RESET_DEVICE);
   digitalWrite(CSn, HIGH);
   
-  delay(30);  // Attendre que le reset soit terminé (généralement <30ms)
+  delay(30);  // Attendre que le reset soit terminé
+  Serial.println(F("Reset terminé"));
 }
 
 uint8_t readStatus() {
@@ -113,24 +289,24 @@ uint8_t readStatus() {
   return status;
 }
 
-// Activer l'écriture
 void writeEnable() {
   digitalWrite(CSn, LOW);
   sendByte(WRITE_ENABLE);
   digitalWrite(CSn, HIGH);
   
-  // Attendre que le WEL bit soit mis à 1
-  while(!(readStatus() & 0x02));
+  // Vérifier que le WEL bit est mis à 1
+  uint8_t status = readStatus();
+  if(!(status & 0x02)) {
+    Serial.println(F("ERREUR: Write Enable a échoué!"));
+  }
 }
 
-// Désactiver l'écriture
 void writeDisable() {
   digitalWrite(CSn, LOW);
   sendByte(WRITE_DISABLE);
   digitalWrite(CSn, HIGH);
 }
 
-// Écrire dans le registre de statut
 void writeStatus(uint8_t status) {
   digitalWrite(CSn, LOW);
   sendByte(WRITE_STATUS_REG);
@@ -138,23 +314,23 @@ void writeStatus(uint8_t status) {
   digitalWrite(CSn, HIGH);
   
   // Attendre que l'opération soit terminée
-  while(readStatus() & 0x01);
+  while(readStatus() & 0x01) {
+    delay(1);
+  }
 }
 
 void readID(uint8_t *id) {
   digitalWrite(CSn, LOW);
   sendByte(READ_ID);
-  id[0] = receiveByte();  // ID fabricant (devrait être 0xC2 pour Macronix)
-  id[1] = receiveByte();  // Type de mémoire
-  id[2] = receiveByte();  // Capacité (devrait être 0x16 pour 32Mbit)
+  id[0] = receiveByte();  // ID fabricant (0xC2 pour Macronix)
+  id[1] = receiveByte();  // Type
+  id[2] = receiveByte();  // Capacité (0x16 pour 32Mbit)
   digitalWrite(CSn, HIGH);
 }
 
-// Lire des données de l'EEPROM
 void EEPROMread(uint32_t address, uint8_t *buffer, uint16_t length) {
   digitalWrite(CSn, LOW);
   sendByte(READ_DATA);
-  // MX25L3233F nécessite une adresse sur 24 bits (3 octets)
   sendByte((address >> 16) & 0xFF);  // MSB
   sendByte((address >> 8) & 0xFF);   // Milieu
   sendByte(address & 0xFF);          // LSB
@@ -166,11 +342,10 @@ void EEPROMread(uint32_t address, uint8_t *buffer, uint16_t length) {
   digitalWrite(CSn, HIGH);
 }
 
-// Écrire des données dans l'EEPROM (limité à une page de 256 octets)
 void EEPROMwrite(uint32_t address, uint8_t *buffer, uint16_t length) {
   // Vérifier si l'adresse + longueur dépasse une page
   if((address & 0xFF) + length > 256) {
-    Serial.println("Erreur: L'écriture traverse une limite de page");
+    Serial.println(F("ERREUR: L'écriture traverse une limite de page"));
     return;
   }
   
@@ -178,9 +353,9 @@ void EEPROMwrite(uint32_t address, uint8_t *buffer, uint16_t length) {
   
   digitalWrite(CSn, LOW);
   sendByte(PAGE_PROGRAM);
-  sendByte((address >> 16) & 0xFF);
-  sendByte((address >> 8) & 0xFF);
-  sendByte(address & 0xFF);
+  sendByte((address >> 16) & 0xFF);  // MSB
+  sendByte((address >> 8) & 0xFF);   // Milieu
+  sendByte(address & 0xFF);          // LSB
   
   for(uint16_t i = 0; i < length; i++) {
     sendByte(buffer[i]);
@@ -189,32 +364,51 @@ void EEPROMwrite(uint32_t address, uint8_t *buffer, uint16_t length) {
   digitalWrite(CSn, HIGH);
   
   // Attendre que l'opération d'écriture soit terminée
-  while(readStatus() & 0x01);
+  while(readStatus() & 0x01) {
+    delay(1);
+  }
   
   writeDisable();
 }
 
-// Envoyer un octet via SPI bit par bit
+// Effacer un secteur (4KB)
+void sectorErase(uint32_t address) {
+  writeEnable();
+  
+  digitalWrite(CSn, LOW);
+  sendByte(SECTOR_ERASE);
+  sendByte((address >> 16) & 0xFF);  // MSB
+  sendByte((address >> 8) & 0xFF);   // Milieu
+  sendByte(address & 0xFF);          // LSB
+  digitalWrite(CSn, HIGH);
+  
+  // Attendre que l'opération d'effacement soit terminée
+  while(readStatus() & 0x01) {
+    Serial.print(".");
+    delay(100);
+  }
+  writeDisable();
+}
+
 void sendByte(uint8_t byte) {
   for(int i = 7; i >= 0; i--) {
     digitalWrite(SI, (byte >> i) & 0x01);
     digitalWrite(SCLK, HIGH);
-    delayMicroseconds(10000);  // Court délai pour s'assurer que le signal est stable
+    delayMicroseconds(1);
     digitalWrite(SCLK, LOW);
-    delayMicroseconds(10000);
+    delayMicroseconds(1);
   }
 }
 
-// Recevoir un octet via SPI bit par bit
 uint8_t receiveByte() {
   uint8_t byte = 0;
   
   for(int i = 7; i >= 0; i--) {
     digitalWrite(SCLK, HIGH);
-    delayMicroseconds(10000);
+    delayMicroseconds(1);
     byte |= (digitalRead(SO) << i);
     digitalWrite(SCLK, LOW);
-    delayMicroseconds(10000);
+    delayMicroseconds(1);
   }
   
   return byte;
