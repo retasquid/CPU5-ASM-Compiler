@@ -25,7 +25,7 @@
         "name": "variable.parameter.register.custom-asm"
       },
       "RAMregisters": {
-        "match": "\\b(RAM0|SP0|GPI0|GPI1|GPO0|GPO1|CONFSPI|SPI|BAUDH|BAUDL|UART|STATUS)\\b",
+        "match": "\\b(RAM0|SP0|GPI0|GPI1|GPO0|GPO1|CONFSPI|SPI|BAUDH|BAUDL|UART|STATUS|CONFINT)\\b",
         "name": "variable.parameter.RAMregister.custom-asm"
       },
       "instructions": {
