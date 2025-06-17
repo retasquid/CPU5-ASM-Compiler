@@ -12,7 +12,9 @@ for i in range(len(char_list)):
     output.write("    LOAD R0 0x"+str(format(char_list[i],'02x'))+"    ;"+buffer[i]+" \n")
     output.write("    CALL \n")
     output.write("    SUBI SP SP 1\n")
-    output.write("    JMP send_uart\n\n")
-
+    output.write("    JMP output_uart\n")
+output.write("    ADDI SP SP 1\n")
+output.write("    RET\n")
+output.close()
 print("Assembly code has been written to string.asm")
 print("string lenght : " + str(len(char_list))+ ", code size : " + str(len(char_list)*4) + " lines")
