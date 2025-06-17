@@ -1,10 +1,10 @@
 // Tableau de données à écrire
 #include "prog.h"
 
-#define SCLK 13   // Serial Clock
-#define SO 12     // Serial Output (MISO - Master In Slave Out)
-#define SI 11     // Serial Input (MOSI - Master Out Slave In)
-#define CSn 10    // Chip Select
+#define SCLK 2   // Serial Clock
+#define SO 4     // Serial Output (MISO - Master In Slave Out)
+#define SI 15     // Serial Input (MOSI - Master Out Slave In)
+#define CSn 16    // Chip Select
 
 // Instructions pour MX25L3233F
 #define WRITE_ENABLE 0x06
@@ -31,6 +31,7 @@
 // Adresse d'écriture/lecture
 #define WRITE_ADDRESS 0x1000  // Utiliser une adresse alignée sur un secteur
 #define ROM_SIZE 262143
+
 void setup() {
   // Configuration des broches
   pinMode(CSn, OUTPUT);
@@ -41,30 +42,30 @@ void setup() {
   digitalWrite(CSn, HIGH);    // Désactiver la puce
   
   // Initialiser la communication série pour le débogage
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) { ; }  // Attendre que le port série soit prêt
   
-  Serial.println(F("\n\n=== EEPROM MX25L PROGRAMMER ===\n"));
+  Serial.println("\n\n=== EEPROM MX25L PROGRAMMER ===\n");
   // Configuration initiale de l'EEPROM
   EEPROMsetup();
     // Afficher l'ID de la puce à chaque cycle
-  Serial.println(F("\n--- Lecture ID ---"));
+  Serial.println("\n--- Lecture ID ---");
   uint8_t id[3];
   readID(id);
-  Serial.print(F("ID fabricant: 0x"));
+  Serial.print("ID fabricant: 0x");
   Serial.println(id[0], HEX);
-  Serial.print(F("Type de mémoire: 0x"));
+  Serial.print("Type de mémoire: 0x");
   Serial.println(id[1], HEX);
-  Serial.print(F("Capacité: 0x"));
+  Serial.print("Capacité: 0x");
   Serial.print(id[2], HEX);
-  Serial.print(F(" / "));
+  Serial.print(" / ");
   unsigned long taille = 1<<(id[2]-17);
   Serial.print(taille);
-  Serial.print(F(" Megabits\n"));
+  Serial.print(" Megabits\n");
   
   // Vérifier si c'est bien une puce Macronix
   if(id[0] != 0xC2) {
-    Serial.println(F("ATTENTION: Puce non reconnue ou problème de communication!"));
+    Serial.println("ATTENTION: Puce non reconnue ou problème de communication!");
     delay(1000);
     return;
   }
@@ -84,38 +85,34 @@ void loop() {
 }
 
 void performRead() {
-  Serial.println(F("=== DEBUT LECTURE ==="));
-  Serial.print(F("Lecture à l'adresse 0x"));
+  Serial.println("=== DEBUT LECTURE ===");
+  Serial.print("Lecture à l'adresse 0x");
   Serial.println(WRITE_ADDRESS, HEX);
   
   uint8_t data[sizeof(code)];
   EEPROMread(WRITE_ADDRESS, data, sizeof(code));
   
-  Serial.println(F("Données lues:"));
-  printHexData(data, sizeof(code));
+  Serial.println("Données lues:");
+  printHexData(data, sizeof(code),WRITE_ADDRESS);
 }
 
 void performWrite() {
-  Serial.println(F("=== DEBUT ECRITURE ==="));
-  
-  // 1. Afficher les données à écrire
-  Serial.println(F("Données à écrire:"));
-  printHexData((uint8_t*)code, sizeof(code));
+  Serial.println("=== DEBUT ECRITURE ===");
   
   // 2. Effacer le secteur avant écriture
-  Serial.print(F("Effacement du secteur à l'adresse 0x"));
+  Serial.print("Effacement du secteur à l'adresse 0x");
   Serial.println(WRITE_ADDRESS, HEX);
   sectorErase(WRITE_ADDRESS);
   
   // 3. Écrire les données
-  Serial.print(F("Écriture de "));
+  Serial.print("Écriture de ");
   Serial.print(sizeof(code));
-  Serial.print(F(" octets à l'adresse 0x"));
+  Serial.print(" octets à l'adresse 0x");
   Serial.println(WRITE_ADDRESS, HEX);
   
   writeMultiplePages(WRITE_ADDRESS, (uint8_t*)code, sizeof(code));
   
-  Serial.println(F("Écriture vector table"));
+  Serial.println("Écriture vector table");
 
   // Calculer l'adresse de la table vectorielle (fin de ROM)
   uint32_t vectorAddress = ROM_SIZE - 31; // 65536 - 32 = 65504 (0xFFE0)
@@ -124,56 +121,57 @@ void performWrite() {
   uint32_t codeSector = WRITE_ADDRESS & 0xFFFFF000;
   uint32_t vectorSector = vectorAddress & 0xFFFFF000;
   
-  Serial.print(F("Secteur du code: 0x"));
+  Serial.print("Secteur du code: 0x");
   Serial.println(codeSector, HEX);
-  Serial.print(F("Secteur de la table vectorielle: 0x"));
+  Serial.print("Secteur de la table vectorielle: 0x");
   Serial.println(vectorSector, HEX);
   
   // Effacer le secteur de la table vectorielle seulement s'il est différent
   if(vectorSector != codeSector) {
-    Serial.print(F("Effacement du secteur pour la table vectorielle à 0x"));
+    Serial.print("Effacement du secteur pour la table vectorielle à 0x");
     Serial.println(vectorSector, HEX);
     sectorErase(vectorSector);
   } else {
-    Serial.println(F("Table vectorielle dans le même secteur - pas d'effacement supplémentaire"));
+    Serial.println("Table vectorielle dans le même secteur - pas d'effacement supplémentaire");
   }
   
   writeMultiplePages(vectorAddress, (uint8_t*)vector_table, 32);
 
-  Serial.println(F("Écriture terminée"));
+  Serial.println("Écriture terminée");
   
   // 4. Vérification du code principal
-  Serial.println(F("\n=== VERIFICATION CODE ==="));
+  
+  Serial.println("\n=== VERIFICATION CODE ===");
   uint8_t readData[sizeof(code)];
   EEPROMread(WRITE_ADDRESS, readData, sizeof(code));
   
-  Serial.println(F("Données lues après écriture:"));
-  printHexData(readData, sizeof(code));
+  Serial.println("Données lues après écriture:");
+  printHexData(readData, sizeof(code),0);
   
   // 5. Comparaison code
   bool success1 = verifyData((uint8_t*)code, readData, sizeof(code));
 
   // 6. Vérification vector table 
-  Serial.println(F("\n=== VERIFICATION VECTOR TABLE ==="));
+  Serial.println("\n=== VERIFICATION VECTOR TABLE ===");
   uint8_t readDataVector[32];
   EEPROMread(vectorAddress, readDataVector, 32);
   
-  Serial.println(F("Table vectorielle lue après écriture:"));
-  printHexData(readDataVector, 32);
+  Serial.println("Table vectorielle lue après écriture:");
+  printHexData(readDataVector, 32, 0);
   
   // 7. Comparaison vector table
   bool success2 = verifyData((uint8_t*)vector_table, readDataVector, 32);
 
   if(success1 && success2) {
-    Serial.println(F("✓ VERIFICATION REUSSIE - Données correctement écrites!"));
+    Serial.println("✓ VERIFICATION REUSSIE - Données correctement écrites!");
   } else {
-    Serial.println(F("✗ ERREUR - Données corrompues!"));
+    Serial.println("✗ ERREUR - Données corrompues!");
   }
+  
 }
-
 // Afficher des données en hexadécimal avec formatage amélioré
-void printHexData(const uint8_t *data, uint16_t length) {
-  for(uint16_t i = 0; i < length; i++) {
+void printHexData(const uint8_t *data, uint16_t length, uint32_t offset) {
+  for(uint32_t i = offset; i < length+offset; i++) {
     if(i % 16 == 0) {
       Serial.print("0x");
       if(i < 0x10) Serial.print("0");
@@ -183,7 +181,7 @@ void printHexData(const uint8_t *data, uint16_t length) {
     }
     
     if(data[i] < 0x10) Serial.print("0");
-    Serial.print(data[i], HEX);
+    Serial.print(data[i] , HEX);
     Serial.print(" ");
     
     if((i + 1) % 16 == 0) {
@@ -214,7 +212,7 @@ bool verifyData(const uint8_t *expected, const uint8_t *actual, uint16_t length)
 }
 
 // Écriture sur plusieurs pages (gère automatiquement les limites)
-void writeMultiplePages(uint32_t address, uint8_t *data, uint16_t length) {
+void writeMultiplePages(uint32_t address,const uint8_t *data, uint16_t length) {
   uint16_t bytesWritten = 0;
   
   Serial.println("Début écriture multi-pages:");
@@ -223,26 +221,24 @@ void writeMultiplePages(uint32_t address, uint8_t *data, uint16_t length) {
     uint32_t currentAddress = address + bytesWritten;
     uint16_t pageOffset = currentAddress & 0xFF;  // Position dans la page courante
     uint16_t bytesInPage = 256 - pageOffset;      // Octets restants dans la page
-    uint16_t bytesToWrite = min(bytesInPage, length - bytesWritten);
-    
-    Serial.print(F("  Écriture page: "));
+    uint16_t bytesToWrite = (bytesInPage<(length - bytesWritten))?bytesInPage : (length - bytesWritten);
+    Serial.print("  Écriture page: ");
     Serial.print(bytesToWrite);
-    Serial.print(F(" octets à 0x"));
+    Serial.print(" octets à 0x");
     Serial.print(currentAddress, HEX);
     
     EEPROMwrite(currentAddress, data + bytesWritten, bytesToWrite);
     
-    Serial.println(F(" - OK"));
+    Serial.println(" - OK");
     bytesWritten += bytesToWrite;
   }
-  
   Serial.print("Total écrit: ");
   Serial.print(bytesWritten);
   Serial.println(" octets");
 }
 
 void EEPROMsetup() {
-  Serial.println(F("Initialisation de l'EEPROM MX25L..."));
+  Serial.println("Initialisation de l'EEPROM MX25L...");
   
   // Reset de la puce pour s'assurer qu'elle est dans un état connu
   resetDevice();
@@ -251,16 +247,16 @@ void EEPROMsetup() {
   uint8_t status = readStatus();
   
   // Interpréter le statut
-  if(status & 0x01) Serial.println(F("  - Opération en cours (BUSY)"));
-  if(status & 0x02) Serial.println(F("  - Écriture activée (WEL)"));
-  if(status & 0x3C) Serial.println(F("  - Protection active"));
+  if(status & 0x01) Serial.println("  - Opération en cours (BUSY)");
+  if(status & 0x02) Serial.println("  - Écriture activée (WEL)");
+  if(status & 0x3C) Serial.println("  - Protection active");
   
   // Si nécessaire, déverrouiller la protection en écriture
   if(status & 0x3C) {
-    Serial.println(F("Désactivation de la protection..."));
+    Serial.println("Désactivation de la protection...");
     writeEnable();
     writeStatus(0x00);
-    Serial.println(F("Protection désactivée"));
+    Serial.println("Protection désactivée");
   }
 }
 
@@ -275,7 +271,7 @@ void resetDevice() {
   digitalWrite(CSn, HIGH);
   
   delay(30);  // Attendre que le reset soit terminé
-  Serial.println(F("Reset terminé"));
+  Serial.println("Reset terminé");
 }
 
 uint8_t readStatus() {
@@ -297,7 +293,7 @@ void writeEnable() {
   // Vérifier que le WEL bit est mis à 1
   uint8_t status = readStatus();
   if(!(status & 0x02)) {
-    Serial.println(F("ERREUR: Write Enable a échoué!"));
+    Serial.println("ERREUR: Write Enable a échoué!");
   }
 }
 
@@ -342,10 +338,10 @@ void EEPROMread(uint32_t address, uint8_t *buffer, uint16_t length) {
   digitalWrite(CSn, HIGH);
 }
 
-void EEPROMwrite(uint32_t address, uint8_t *buffer, uint16_t length) {
+void EEPROMwrite(uint32_t address, const uint8_t *buffer, uint16_t length) {
   // Vérifier si l'adresse + longueur dépasse une page
   if((address & 0xFF) + length > 256) {
-    Serial.println(F("ERREUR: L'écriture traverse une limite de page"));
+    Serial.println("ERREUR: L'écriture traverse une limite de page");
     return;
   }
   
@@ -358,7 +354,7 @@ void EEPROMwrite(uint32_t address, uint8_t *buffer, uint16_t length) {
   sendByte(address & 0xFF);          // LSB
   
   for(uint16_t i = 0; i < length; i++) {
-    sendByte(buffer[i]);
+    sendByte(pgm_read_byte(buffer+i));
   }
   
   digitalWrite(CSn, HIGH);
