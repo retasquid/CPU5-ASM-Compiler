@@ -18,3 +18,5 @@ After each assembly compiling, you need to plug the SPI Flash with the µC pins 
 For now, the interface is in French : 
 
 ![image](https://github.com/user-attachments/assets/63037605-2575-4efe-8891-9243dfc5fdad)
+
+I recommande using new arduino / esp board that can store more than 256 KB in flash and that store const variables in flash and not in Ram else you will be limited in code lenght
