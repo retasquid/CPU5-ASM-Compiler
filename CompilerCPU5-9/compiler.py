@@ -109,7 +109,7 @@ def main():
                          "    reg[28:0] data [2047:0];\n"
                          "    initial begin\n")
         elif mode == 3:
-            output.write("char code["+str((pc-1024)<<2)+"] = {\n")
+            output.write("const char code["+str((pc-1024)<<2)+"] = {\n")
         endPC = pc
         if mode == 3:
             pc = 1024
@@ -252,7 +252,7 @@ def main():
         elif mode == 3:
             output.write("};")
 
-            output.write("\n\nchar vector_table[32] = {\n")
+            output.write("\n\nconst char vector_table[32] = {\n")
             
             for i in range(0,8):
                 if INTERRUPTS[i] in labels :
