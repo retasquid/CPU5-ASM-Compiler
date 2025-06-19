@@ -2,103 +2,93 @@
 ;               ******
 ;               0x3fff
 
-; RAM :         0x4000  IMPLEMENTED :   0x4000
+; RAM :         0x4000
+;               ******
+;               0x7fff
+
+; RAM2 :        0x8000  IMPLEMENTED :   0x8000
 ;               ******                  ******
-;               0x7fff                  0x40ff
+;               0xbfff                  0x9fff
 
-; NOT_USED :    0x8000
+; RAM3 :        0xc000  IMPLEMENTED :   0xc000
 ;               ******
-;               0xbfff
-
-; NOT_USED :    0xc000
-;               ******
-;               0xffff
+;               0xffff                  0xc0ff
 
 start :
-    LOAD SP 0x40ff
+    LOAD SP 0xc0ff
     LOAD R0 0
     OUTI R0 BAUDH
     LOAD R0 9600
     OUTI R0 BAUDL
 loop :
-    CALL            ;print("Calculateur de resistance series ") 
+    LOAD R0 0xdc
+    OUTI R0 GPO0
+
+    CALL            ;print("Test reception ") 
     SUBI SP SP 1
     JMP print_header
 
-    CALL            ;print("Entrez valeur resistance 1: ") 
-    SUBI SP SP 1
-    JMP print_R1
-
-    LOAD R1 RAM0
-    CALL   
-    SUBI SP SP 1
-    JMP input_uart   ; Read input from UART
-
-    LOAD R0 RAM0
-    CALL 
-    SUBI SP SP 1
-    JMP string_to_int
-    OUTI R0 0x4010
-
-    LOAD R0 13    ;\
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 10    ;n 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-
-    CALL            ;print("Entrez valeur resistance 2: ") 
-    SUBI SP SP 1
-    JMP print_R2
-
-    LOAD R1 RAM0
+test_reception : 
+    LOAD R1 0x4000
     CALL
     SUBI SP SP 1
-    JMP input_uart   ; Read input from UART
+    JMP input_uart
+    SUBI R7 R0 0
 
-    LOAD R0 RAM0
-    CALL 
-    SUBI SP SP 1
-    JMP string_to_int
-    OUTI R0 0x4011
-
-    LOAD R0 13    ;\
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 10    ;n 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-
-    CALL            ;print("valeur Req : ") 
-    SUBI SP SP 1
-    JMP print_Req
-
-    INI R0 0x4010
-    INI R1 0x4011
-    CALL 
-    SUBI SP SP 1
-    JMP mult
-
-    CALL 
+    IN R0 R7
+    CALL                ;byte 0
     SUBI SP SP 1
     JMP print_number
+    ADDI R7 R7 1
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+
+    IN R0 R7
+    CALL                ;byte 1
+    SUBI SP SP 1
+    JMP print_number
+    ADDI R7 R7 1
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+
+    IN R0 R7
+    CALL                ;byte 2
+    SUBI SP SP 1
+    JMP print_number
+    ADDI R7 R7 1
+
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+
+    IN R0 R7
+    CALL                ;byte 3
+    SUBI SP SP 1
+    JMP print_number
+    ADDI R7 R7 1
 
     LOAD R0 13    ;\
     CALL 
     SUBI SP SP 1
     JMP output_uart
     LOAD R0 10    ;n 
-
     CALL 
     SUBI SP SP 1
     JMP output_uart
 
+    JMP test_reception
+
+
 end :
-    JMP loop
+
+    JMP end
 
 ;  ////////////////////////////////////////////
 ; ///   Standard Library for the CPU 5.9   ///
@@ -148,27 +138,7 @@ output_uart :
         ADDI SP SP 1  ; Decrement Stack Pointer
         RET
 
-;input : R0 = char* str
-;output : R0 = number
-string_to_int :
-    LOAD R10 0 ;uint16_t result = 0;
-    LOAD R11 0 ;int i = 0;
-    for_0000 :  ;for (int i = 0; str[i] != '\0'; i++) {
-        IN R12 R0
-        ADDI R0 R0 1
-        SUBI R12 R12 0 ;str[i] != '\0'
-        JM0 end_string_to_int
-        SHLI R13 R10 3 ;(result << 3)
-        SHLI PC R10 1 ;(result << 1)
-        ADD R13 R13 PC ;(result << 3)+(result << 1)
-        SUBI R12 R12 0x30 ;str[i] - '0'
-        ADD R10 R13 R12 ;(result << 3)+(result << 1)+(str[i] - '0')
-        ADDI R11 R11 1 ;i++
-        JMP for_0000
-    end_string_to_int :
-        AND R0 R10 R10 ;return result;
-        ADDI SP SP 1  ; Decrement Stack Pointer
-        RET
+
 
 ;input : R0 = number
 ;output : R0 = BCDL
@@ -222,18 +192,18 @@ print_number :
         SUBI SP SP 1
         JMP output_uart_special
     digit3 :
-        ANDI R10 R0 0xF00
-        ADD R8 R10 R9
+        ANDI R9 R0 0xF00
+        ADD R10 R10 R9
         JM0 digit4
-        SHRI R8 R10 8
+        SHRI R8 R9 8
         CALL
         SUBI SP SP 1
         JMP output_uart_special
     digit4 :
-        ANDI R11 R0 0xF0
-        ADD R10 R11 R10
+        ANDI R9 R0 0xF0
+        ADD R10 R9 R10
         JM0 digit5
-        SHRI R8 R11 4
+        SHRI R8 R9 4
         CALL
         SUBI SP SP 1
         JMP output_uart_special
@@ -258,262 +228,6 @@ output_uart_special :
         ADDI SP SP 1  ; Decrement Stack Pointer
         RET
 
-;input : R0 = start string pointer
-output_uart_string :
-    IN R1 R0  ; Read the first byte of the string
-    ADDI R0 R0 1  ; Increment the pointer to the next character
-    ADDI R1 R1 0   ;test end with '\O'
-    JM0 end_uart_send_str  ; If end of string, jump
-    ORI R1 R1 0b100000000 ; Set the send bit
-    OUTI R1 UART
-    ANDI R1 R1 0b011111111 ; Clear the send bit
-    OUTI R1 UART
-    wait_uart_send_str :
-        INI R1 STATUS  ; Read the status register
-        ANDI R1 R1 0x02  ; Check if the UART is busy
-        JM0 output_uart_string   ; If end sending, jump
-        JMP wait_uart_send_str  ; Loop until UART is ready
-    end_uart_send_str :
-        ADDI SP SP 1  ; Decrement Stack Pointer
-        RET
-
-;input : R0 = a
-;input : R1 = b
-;output : R0 = product of a and b
-mult :
-    LOAD R3 0x0 ;int sign = 1
-    LOAD R4 0 ;int32_t result = 0
-    SUBI R0 R0 0 ;if (a < 0) {
-    JMN mult_neg_a
-    JMP mult_check_b
-    mult_neg_a : 
-        SUB R0 R4 R0 ;    a = -a;
-        NAND R3 R3 R3 ;    sign = ~sign;
-    mult_check_b :
-        SUBI R1 R1 0 ;if (b < 0) {
-        JMN mult_neg_b
-        JMP mult_check_ainfb
-    mult_neg_b :
-        SUB R1 R4 R1 ;    a = -a;
-        NAND R3 R3 R3 ;    sign = ~sign;
-    mult_check_ainfb :
-        SUB R10 R0 R1 ;if(a<b){
-        XOR R0 R0 R1  ;a = a ^ b;
-        XOR R1 R0 R1  ;b = a ^ b; 
-        XOR R0 R0 R1  ;a = a ^ b;
-    while_0000 : 
-        SUBI R1 R1 0  ;while (b != 0) {
-        JM0 mult_end
-        ANDI R10 R1 1 ;        if (b & 1) { 
-        JM0 mult_skip_add
-        ADD R4 R4 R0 ;            result += a;
-    mult_skip_add :
-        SHLI R0 R0 1 ;        a <<= 1;
-        SHRI R1 R1 1 ;        b >>= 1;
-        JMP while_0000
-    mult_end :
-        SUBI R3 R3 0 ;if (sign < 0) {
-        JM0 mult_return_pos
-        SUB R0 R1 R4
-        ADDI SP SP 1
-        RET ;        return result;
-    mult_return_pos : 
-        AND R0 R4 R4
-        ADDI SP SP 1
-        RET ;        return result;
-
-
-print_R1 : 
-    LOAD R0 0x56    ;V 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x61    ;a 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x6c    ;l 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x75    ;u 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x72    ;r 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x64    ;d 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x52    ;R 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x31    ;1 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x3e    ;> 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    ADDI SP SP 1
-    RET
-
-    
-print_R2 : 
-        LOAD R0 0x56    ;V 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x61    ;a 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x6c    ;l 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x75    ;u 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x72    ;r 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x64    ;d 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x52    ;R 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x32    ;2
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x3e    ;> 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    ADDI SP SP 1
-    RET
-
-
-
-print_Req :
-    LOAD R0 0x56    ;V 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x61    ;a 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x6c    ;l 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x75    ;u 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x72    ;r 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x64    ;d 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x52    ;R 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x71    ;q 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x3a    ;: 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    ADDI SP SP 1
-    RET
-
 
 print_header : 
     LOAD R0 13    ;\
@@ -524,68 +238,27 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-
-    LOAD R0 0x20    ;  
+        LOAD R0 0x2d    ;- 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-
-    LOAD R1 40
-    for_0001 :
-    SUBI R1 R1 1
-    JM0 continue_print_char001
-        LOAD R0 0x2f    ;/ 
-        CALL 
-        SUBI SP SP 1
-        JMP output_uart
-    JMP for_0001
-    continue_print_char001 :
-    LOAD R0 13    ;\
+    LOAD R0 0x3c    ;< 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 10    ;n 
+    LOAD R0 0x3c    ;< 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-
-    LOAD R0 0x2f    ;/ 
+    LOAD R0 0x54    ;T 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x2f    ;/ 
+    LOAD R0 0x65    ;e 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x43    ;C 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x61    ;a 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x6c    ;l 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x63    ;c 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x75    ;u 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x6c    ;l 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x61    ;a 
+    LOAD R0 0x73    ;s 
     CALL 
     SUBI SP SP 1
     JMP output_uart
@@ -597,51 +270,15 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x75    ;u 
+    LOAD R0 0x20    ;  
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+    LOAD R0 0x74    ;t 
     CALL 
     SUBI SP SP 1
     JMP output_uart
     LOAD R0 0x72    ;r 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x64    ;d 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x65    ;e 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x20    ;  
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x52    ;R 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0xe9    ;� 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x73    ;s 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x69    ;i 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x73    ;s 
-    CALL 
-    SUBI SP SP 1
-    JMP output_uart
-    LOAD R0 0x74    ;t 
     CALL 
     SUBI SP SP 1
     JMP output_uart
@@ -653,11 +290,15 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x63    ;c 
+    LOAD R0 0x73    ;s 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x65    ;e 
+    LOAD R0 0x6d    ;m 
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+    LOAD R0 0x69    ;i 
     CALL 
     SUBI SP SP 1
     JMP output_uart
@@ -665,11 +306,11 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x20    ;  
+    LOAD R0 0x69    ;i 
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x65    ;e 
+    LOAD R0 0x6f    ;o 
     CALL 
     SUBI SP SP 1
     JMP output_uart
@@ -685,7 +326,7 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0xe9    ;� 
+    LOAD R0 0x65    ;e 
     CALL 
     SUBI SP SP 1
     JMP output_uart
@@ -701,7 +342,15 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-    LOAD R0 0x73    ;s 
+    LOAD R0 0x3e    ;> 
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+    LOAD R0 0x3e    ;> 
+    CALL 
+    SUBI SP SP 1
+    JMP output_uart
+    LOAD R0 0x2d    ;- 
     CALL 
     SUBI SP SP 1
     JMP output_uart

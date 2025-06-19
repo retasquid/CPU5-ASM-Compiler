@@ -26,11 +26,13 @@ def main():
             mode = 1  # Verilog ROM output
         elif output_file.endswith(".h"):
             mode = 3  #flasher header
+        elif output_file.endswith(".py"):
+            mode = 4  #flasher header
         else:
             mode = 2  # hex output
     except:
         source_file = "main.asm"
-        output_file = "D:/FPGA/CPU5_9/CPU5_9/src/ROM.v"
+        output_file = "D:/FPGA/Flasher/prog.h"
         mode = 1
     
     # Helper functions
@@ -110,8 +112,11 @@ def main():
                          "    initial begin\n")
         elif mode == 3:
             output.write("const char code["+str((pc-1024)<<2)+"] = {\n")
+        elif mode == 4:
+            output.write("code = bytes([\n")
         endPC = pc
-        if mode == 3:
+
+        if mode == 3 or mode == 4:
             pc = 1024
         else :
             pc = 0
@@ -232,6 +237,15 @@ def main():
                 byte3=(int(to_hex8(instruction),16)>>8)&0xFF
                 byte4=int(to_hex8(instruction),16)&0xFF
                 if(pc==(endPC-1)):
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+"\n};\n")
+                else :
+                    output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+",\n")
+            elif mode == 4:
+                byte1=int(to_hex8(instruction),16)>>24
+                byte2=(int(to_hex8(instruction),16)>>16)&0xFF
+                byte3=(int(to_hex8(instruction),16)>>8)&0xFF
+                byte4=int(to_hex8(instruction),16)&0xFF
+                if(pc==(endPC-1)):
                     output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+"\n")
                 else :
                     output.write("0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+", 0x"+str(format(byte3,'02x'))+", 0x"+str(format(byte4,'02x'))+",\n")
@@ -250,7 +264,6 @@ def main():
                         "    end\n"
                         "endmodule\n")
         elif mode == 3:
-            output.write("};")
 
             output.write("\n\nconst char vector_table[32] = {\n")
             
@@ -259,12 +272,31 @@ def main():
                     byte1 = labels[INTERRUPTS[i]]>>8
                     byte2 = labels[INTERRUPTS[i]]&0xFF
                     if i==7 :
-                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n")
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n};\n")
                     else :
                         output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+",\n")
                 else :
-                    output.write("0x17, 0x00, 0xF0, 0x00,\n")
-            output.write("};\n")
+                    if i<7 :
+                        output.write("0x17, 0x00, 0xF0, 0x00,\n")
+                    else : 
+                        output.write("0x17, 0x00, 0xF0, 0x00\n};\n")
+        elif mode == 4:
+            output.write("])\n")
+            output.write("\n\nvector_table = bytes([\n")
+            
+            for i in range(0,8):
+                if INTERRUPTS[i] in labels :
+                    byte1 = labels[INTERRUPTS[i]]>>8
+                    byte2 = labels[INTERRUPTS[i]]&0xFF
+                    if i==7 :
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+"\n])\n")
+                    else :
+                        output.write("0x12, 0x00, 0x"+str(format(byte1,'02x'))+", 0x"+str(format(byte2,'02x'))+",\n")
+                else :
+                    if i<7 :
+                        output.write("0x17, 0x00, 0xF0, 0x00,\n")
+                    else : 
+                        output.write("0x17, 0x00, 0xF0, 0x00\n])\n")
 
     print("\nCompilation terminée\n")
     print("taille du code : "+str(pc-1024)+" lignes soit "+str((pc<<2)-4096)+" Octets")

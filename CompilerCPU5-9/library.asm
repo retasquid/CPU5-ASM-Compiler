@@ -176,6 +176,15 @@ transfert_spi :
 ;   variable and type functions
 ;/////////////////////////////////
 
+;input : R0 = int cycles to pass
+delay_cycle : 
+    SUBI R0 R0 3
+    JMN end_delay_cycle
+    JMP delay_cycle
+    end_delay_cycle :
+        ADDI SP SP 1 ; Decrement Stack Pointer
+        RET
+        
 ;input : R0 = char* str
 ;output : R0 = number
 string_to_int :
