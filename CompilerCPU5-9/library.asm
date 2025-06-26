@@ -3,8 +3,6 @@
 ;////////////////////////////////////////////
 
 
-
-
 ;//////////////////////////////////////////
 ;   UART and SPI communication functions
 ;////////////////////////////////////////
@@ -113,45 +111,54 @@ print_number :
     digit1 :
         ANDI R8 R1 0xF
         JM0 digit2
-        ADDI R8 R8 0x130
-        OUTI R8 UART   ; Send the high nibble to UART
-        ANDI R8 R8 0x003F
-        OUTI R8 UART   ; Send a space character to UART
+        CALL
+        SUBI SP SP 1
+        JMP output_uart_special
     digit2 :
         ANDI R9 R0 0xF000
         ADD R10 R9 R8
         JM0 digit3
         SHRI R8 R9 12
-        ADDI R8 R8 0x130
-        OUTI R8 UART   ; Send the high nibble to UART
-        ANDI R8 R8 0x003F
-        OUTI R8 UART   ; Send a space character to UART
+        CALL
+        SUBI SP SP 1
+        JMP output_uart_special
     digit3 :
-        ANDI R10 R0 0xF00
-        ADD R8 R10 R9
+        ANDI R9 R0 0xF00
+        ADD R10 R10 R9
         JM0 digit4
-        SHRI R8 R10 8
-        ADDI R8 R8 0x130
-        OUTI R8 UART   ; Send the high nibble to UART
-        ANDI R8 R8 0x003F
-        OUTI R8 UART   ; Send a space character to UART
+        SHRI R8 R9 8
+        CALL
+        SUBI SP SP 1
+        JMP output_uart_special
     digit4 :
-        ANDI R11 R0 0xF0
-        ADD R10 R11 R10
+        ANDI R9 R0 0xF0
+        ADD R10 R9 R10
         JM0 digit5
-        SHRI R8 R11 4
-        ADDI R8 R8 0x130
-        OUTI R8 UART   ; Send the high nibble to UART
-        ANDI R8 R8 0x003F
-        OUTI R8 UART   ; Send a space character to UART
+        SHRI R8 R9 4
+        CALL
+        SUBI SP SP 1
+        JMP output_uart_special
     digit5 :
         ANDI R8 R0 0xF
-        ADDI R8 R8 0x130
-        OUTI R8 UART   ; Send the high nibble to UART
-        ANDI R8 R8 0x003F
-        OUTI R8 UART   ; Send a space character to UART
+        CALL
+        SUBI SP SP 1
+        JMP output_uart_special
         ADDI SP SP 1  
         RET
+output_uart_special :
+    ORI R8 R8 0b0000000100110000 ; Set the send bit
+    OUTI R8 UART
+    ANDI R8 R8 0b1111111011001111 ; Clear the send bit
+    OUTI R8 UART
+    wait_uart_send_special :
+        INI PC STATUS  ; Read the status register
+        ANDI PC PC 0x02  ; Check if the UART is busy
+        JM0 end_uart_send_special  ; If end sending, jump
+        JMP wait_uart_send_special  ; Loop until UART is ready
+    end_uart_send_special :
+        ADDI SP SP 1  ; Decrement Stack Pointer
+        RET
+
 
 
 
@@ -221,6 +228,28 @@ size_of :
         SUB R0 R0 R10
         ADDI SP SP 1     ; Decrement Stack Pointer
         RET
+
+
+;output : R0 = size of the memory
+mem_test :
+    LOAD R3 0 ; mem count
+    LOAD R0 0xDC ; test value
+    LOAD R1 0x4000 ; addresse initial value over IO
+    loop_mem_test_write :
+        SUBI R2 R1 0xc0f0 
+        JM0 end_mem_test
+        OUT R0 R1 
+        IN R2 R1
+        ADDI R1 R1 1
+        SUBI R2 R2 0xDC
+        JM0 add_mem_cnt
+        JMP loop_mem_test_write
+    add_mem_cnt :
+        ADDI R3 R3 1 
+        JMP loop_mem_test_write
+    end_mem_test : 
+    ADDI SP SP 1  ; Decrement Stack Pointer
+    RET
 
 ;////////////////////
 ;   math functions

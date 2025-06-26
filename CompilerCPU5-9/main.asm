@@ -238,7 +238,7 @@ print_header :
     CALL 
     SUBI SP SP 1
     JMP output_uart
-        LOAD R0 0x2d    ;- 
+    LOAD R0 0x2d    ;- 
     CALL 
     SUBI SP SP 1
     JMP output_uart

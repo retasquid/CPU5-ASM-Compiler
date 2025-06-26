@@ -48,7 +48,7 @@ def transfert_binaire():
         if(received!=0xDC) :
             print("Erreur de transfert ligne "+ str(i))
             return 1    
-
+  
         print("Page "+str(page_count)+" écrite avec succès\n")
 
         flash_addr += 0x100
