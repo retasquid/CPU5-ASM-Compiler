@@ -1,5 +1,5 @@
 # CPU5-ASM-Compiler
-Simple custom ASM compiler for my CPU5.
+Simple custom ASM compiler for my CPU5 with an Arduino programer, string to asm line converter, a simple library and a shell like test code.
 
 # How to use
 First, write your assembly language in the main.asm file.
