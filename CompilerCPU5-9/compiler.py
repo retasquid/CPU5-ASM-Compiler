@@ -95,7 +95,6 @@ def main():
                     pc += 1
                 elif words[1] == ':':
                     labels[words[0]] = pc
-                    pc += 1
                 elif words[1].startswith(';') and words[0] not in ["HALT", "CALL", "RET"]:
                     print(f"Error: no argument for instruction but ';' found on line {pc+1+pc_offset}")
                     sys.exit(1)
@@ -324,4 +323,5 @@ def main():
     print("\nCompilation de ",source_file," terminée avec succes\n")
 
 if __name__ == "__main__":
+
     main()
