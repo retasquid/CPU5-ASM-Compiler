@@ -10,14 +10,20 @@ def main():
     
     JUMPS = ["JMP", "JM0", "JMC", "JMN"]
 
-    REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "PC", "SP"]
+    REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "R14", "SP"]
     SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9, "CONFINT":10}
     
     INTERRUPTS = ["interrupt_vector0","interrupt_vector1","interrupt_vector2","interrupt_vector3","interrupt_vector4","interrupt_vector5","interrupt_vector6","interrupt_vector7"]
 
-    # Parse input arguments
+    pc_offset = 0
+    # Parse input file arguments
     try:
         source_file = sys.argv[1]
+    except:
+        source_file = "main.asm"
+
+    # Parse output file arguments
+    try:
         output_file = sys.argv[2]
         
         if output_file.endswith(".bin"):
@@ -28,12 +34,13 @@ def main():
             mode = 3  #flasher header
         elif output_file.endswith(".py"):
             mode = 4  #flasher header
+        elif output_file.endswith(".hex"):
+            mode = 2  # hex output
         else:
             mode = 2  # hex output
     except:
-        source_file = "main.asm"
         output_file = "D:/FPGA/Flasher/prog.h"
-        mode = 1
+        mode = 3
     
     # Helper functions
     def to_binary(number, length):
@@ -71,23 +78,29 @@ def main():
     labels = {}
     if mode == 3:
         pc = 1024
+        pc_offset = -1024
     else :
         pc = 0
+        pc_offset = 0
     endPC = 0
     
     with open(source_file, "r") as source:
         for line in source:
             words = line.strip().split()
             if not words or words[0].startswith(';'):
+                pc_offset += 1
                 continue
-                
             try:
                 if words[0] in COMMANDS or words[0] in JUMPS:
                     pc += 1
                 elif words[1] == ':':
                     labels[words[0]] = pc
+                    pc += 1
                 elif words[1].startswith(';') and words[0] not in ["HALT", "CALL", "RET"]:
-                    print(f"Error: no argument for instruction but ';' found on line {pc+1}")
+                    print(f"Error: no argument for instruction but ';' found on line {pc+1+pc_offset}")
+                    sys.exit(1)
+                else :
+                    print(f"Error: unrecognized instruction but found : {line} > On line {pc+1+pc_offset}")
                     sys.exit(1)
             except IndexError:
                 continue
@@ -111,18 +124,21 @@ def main():
                          "    reg[28:0] data [2047:0];\n"
                          "    initial begin\n")
         elif mode == 3:
-            output.write("const char code["+str((pc-1024)<<2)+"] = {\n")
+            output.write("const char code["+str((pc-1024)*4)+"] = {\n")
         elif mode == 4:
             output.write("code = bytes([\n")
         endPC = pc
 
         if mode == 3 or mode == 4:
             pc = 1024
+            pc_offset = -1024
         else :
             pc = 0
+            pc_offset = 0
         for line in source:
             words = line.strip().split()
             if not words or words[0].startswith(';') or words[0] in labels:
+                pc_offset += 1
                 continue
             elif words[0] == "HALT":
                 instruction = "0" * 29
@@ -135,10 +151,10 @@ def main():
                         else:
                             instruction = "00001"+to_binary(REGISTERS.index(words[1]),4)+"0000"+to_binary(words[2],16)
                     else:
-                        print(f"Error: LOAD instruction without operands on line {pc+1}")
+                        print(f"Error: LOAD instruction without operands on line {pc+1+pc_offset}")
                         sys.exit(1)
                 except: 
-                    print(f"Error: LOAD instruction without target on line {pc+1}")
+                    print(f"Error: LOAD instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] in ["ADD", "SUB", "SHL", "SHR", "AND", "NAND", "OR", "XOR"]:
@@ -146,10 +162,10 @@ def main():
                     if words[1] in REGISTERS and words[2] in REGISTERS and words[3] in REGISTERS:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+to_binary(REGISTERS.index(words[1]),4)+to_binary(REGISTERS.index(words[2]),4)+to_binary(REGISTERS.index(words[3]),4)+"000000000000"
                     else:
-                        print(f"Error: {words[0]} instruction without operands on line {pc+1}")
+                        print(f"Error: {words[0]} instruction without operands on line {pc+1+pc_offset}")
                         sys.exit(1)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] in ["ADDI", "SUBI", "SHLI", "SHRI", "ANDI", "NANDI", "ORI", "XORI"]:
@@ -162,10 +178,10 @@ def main():
                         else:
                             instruction = to_binary(COMMANDS.index(words[0]),5)+to_binary(REGISTERS.index(words[1]),4)+to_binary(REGISTERS.index(words[2]),4)+to_binary(words[3],16)
                     else:
-                        print(f"Error: {words[0]} instruction without operands on line {pc+1}")
+                        print(f"Error: {words[0]} instruction without operands on line {pc+1+pc_offset}")
                         sys.exit(1)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] in ["JMP", "JM0", "JMC", "JMN"]:
@@ -177,7 +193,7 @@ def main():
                     else:
                         instruction = to_binary(18,5)+"0000"+to_binary(JUMPS.index(words[0]),4)+to_binary(words[1],16)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] =="IN":
@@ -185,10 +201,10 @@ def main():
                     if words[1] in REGISTERS and words[2] in REGISTERS:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+to_binary(REGISTERS.index(words[1]),4)+"0000"+to_binary(REGISTERS.index(words[2]),4)+"0"*12
                     else:
-                        print(f"Error: {words[0]} instruction without operands on line {pc+1}")
+                        print(f"Error: {words[0]} instruction without operands on line {pc+1+pc_offset}")
                         sys.exit(1)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] == "INI":
@@ -198,7 +214,7 @@ def main():
                     else:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+to_binary(REGISTERS.index(words[1]),4)+"0000"+to_binary(words[2],16)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
             elif words[0] =="OUT":
@@ -206,10 +222,10 @@ def main():
                     if words[1] in REGISTERS and words[2] in REGISTERS:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+"0000"+to_binary(REGISTERS.index(words[1]),4)+to_binary(REGISTERS.index(words[2]),4)+"0"*12
                     else:
-                        print(f"Error: {words[0]} instruction without operands on line {pc+1}")
+                        print(f"Error: {words[0]} instruction without operands on line {pc+1+pc_offset}")
                         sys.exit(1)
                 except: 
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
             elif words[0] == "OUTI":
                 try:
@@ -218,12 +234,15 @@ def main():
                     else:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+"0000"+to_binary(REGISTERS.index(words[1]),4)+to_binary(words[2],16)
                 except:
-                    print(f"Error: {words[0]} instruction without target on line {pc+1}")
+                    print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
             elif words[0] == "RET":
                 instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 12
             elif words[0] == "CALL":
                 instruction = to_binary(COMMANDS.index(words[0]),5)+"00000000"+"1111"+"0" * 10+"10"
+            else :
+                print(f"Error: unrecognized instruction but found : {line} > On line {pc+1+pc_offset}")
+                sys.exit(1)
 
             if mode == 0:
                 output.write(instruction + '\n')
@@ -298,9 +317,11 @@ def main():
                     else : 
                         output.write("0x17, 0x00, 0xF0, 0x00\n])\n")
 
-    print("\nCompilation terminée\n")
-    print("taille du code : "+str(pc-1024)+" lignes soit "+str((pc<<2)-4096)+" Octets")
-
+    if mode == 0 or mode == 1 or mode == 2 :
+        print("Taille du code : "+str(pc)+" lignes soit "+str((pc<<2))+"/"+str(ROM_SIZE<<2)+" ("+str(round(((pc<<2))*100/(ROM_SIZE<<2),2))+"%) Octets")
+    if mode == 3 or mode == 4 :
+        print("Taille du code : "+str(pc-1024)+" lignes soit "+str((pc<<2)-4096)+"/"+str(ROM_SIZE<<2)+" ("+str(round(((pc<<2)-4096)*100/(ROM_SIZE<<2),2))+"%) Octets")
+    print("\nCompilation de ",source_file," terminée avec succes\n")
 
 if __name__ == "__main__":
     main()
