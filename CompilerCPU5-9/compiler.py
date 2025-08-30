@@ -6,9 +6,9 @@ def main():
     # Les 4 instructions de saut partagent le même opcode de base (10010)
     COMMANDS = ["HALT", "LOAD", "ADD", "ADDI", "SUB", "SUBI", "SHL", "SHLI", "SHR", "SHRI", 
                 "AND", "ANDI", "NAND", "NANDI", "OR", "ORI", "XOR", "XORI", 
-            "JMP", "IN", "OUT", "OUTI", "CALL", "RET", "INI"]
+            "JMP", "IN", "OUT", "OUTI", "CALL", "RET", "INI", "ADDC", "SUBC"]
     
-    JUMPS = ["JMP", "JM0", "JMC", "JMN"]
+    JUMPS = ["JMP", "JM0", "JMC", "JMN", "JMV", "JMS"]
 
     REGISTERS = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13", "R14", "SP"]
     SHORTCUTS = {"RAM0":16384, "SP0":32767, "GPI0":0, "GPI1":1, "GPO0":2, "GPO1":3, "SPI":4, "CONFSPI":5, "UART":6,"BAUDL":7, "BAUDH":8, "STATUS":9, "CONFINT":10}
@@ -156,7 +156,7 @@ def main():
                     print(f"Error: LOAD instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
-            elif words[0] in ["ADD", "SUB", "SHL", "SHR", "AND", "NAND", "OR", "XOR"]:
+            elif words[0] in ["ADD", "SUB", "SHL", "SHR", "AND", "NAND", "OR", "XOR", "ADDC", "SUBC"]:
                 try:
                     if words[1] in REGISTERS and words[2] in REGISTERS and words[3] in REGISTERS:
                         instruction = to_binary(COMMANDS.index(words[0]),5)+to_binary(REGISTERS.index(words[1]),4)+to_binary(REGISTERS.index(words[2]),4)+to_binary(REGISTERS.index(words[3]),4)+"000000000000"
@@ -183,7 +183,7 @@ def main():
                     print(f"Error: {words[0]} instruction without target on line {pc+1+pc_offset}")
                     sys.exit(1)
 
-            elif words[0] in ["JMP", "JM0", "JMC", "JMN"]:
+            elif words[0] in ["JMP", "JM0", "JMC", "JMN", "JMV", "JMS"]:
                 try:
                     if words[1] in labels:
                         instruction = to_binary(18,5)+"0000"+to_binary(JUMPS.index(words[0]),4)+to_binary(labels[words[1]],16)
@@ -323,5 +323,4 @@ def main():
     print("\nCompilation de ",source_file," terminée avec succes\n")
 
 if __name__ == "__main__":
-
     main()
