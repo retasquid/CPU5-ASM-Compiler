@@ -29,7 +29,7 @@
         "name": "variable.parameter.RAMregister.custom-asm"
       },
       "instructions": {
-        "match": "\\b(HALT|LOAD|ADD|ADDI|SUB|SUBI|SHL|SHLI|SHR|SHRI|AND|ANDI|NAND|NANDI|OR|ORI|XOR|XORI|JMP|JM0|JMC|JMN|IN|OUT|OUTI|CALL|RET|INI)\\b",
+        "match": "\\b(HALT|LOAD|ADD|ADDI|ADDC|SUB|SUBI|SUBC|SHL|SHLI|SHR|SHRI|AND|ANDI|NAND|NANDI|OR|ORI|XOR|XORI|JMP|JM0|JMC|JMN|JMV|JMS|IN|OUT|OUTI|CALL|RET|INI)\\b",
         "name": "keyword.instruction.custom-asm"
       },
       "numbers": {
@@ -38,3 +38,4 @@
       }
     }
   }
+
