@@ -1,10 +1,11 @@
+
 // Tableau de données à écrire
 #include "prog.h"
 
-#define SCLK 2   // Serial Clock
-#define SO 4     // Serial Output (MISO - Master In Slave Out)
+#define SCLK 16   // Serial Clock
+#define SO 2     // Serial Output (MISO - Master In Slave Out)
 #define SI 15     // Serial Input (MOSI - Master Out Slave In)
-#define CSn 16    // Chip Select
+#define CSn 4    // Chip Select
 
 // Instructions pour MX25L3233F
 #define WRITE_ENABLE 0x06
@@ -44,7 +45,14 @@ void setup() {
   // Initialiser la communication série pour le débogage
   Serial.begin(115200);
   while (!Serial) { ; }  // Attendre que le port série soit prêt
-  
+  flashProgrammer();
+
+}
+
+void loop() {
+
+}
+void flashProgrammer(){
   Serial.println("\n\n=== EEPROM MX25L PROGRAMMER ===\n");
   // Configuration initiale de l'EEPROM
   EEPROMsetup();
@@ -78,10 +86,6 @@ void setup() {
     // Commentez la ligne suivante si vous voulez rester en mode écriture
     // MODE = MODE_READ;
   }
-}
-
-void loop() {
-
 }
 
 void performRead() {
@@ -372,7 +376,7 @@ void sectorErase(uint32_t address) {
   writeEnable();
   
   digitalWrite(CSn, LOW);
-  sendByte(SECTOR_ERASE);
+  sendByte(BLOCK_ERASE);
   sendByte((address >> 16) & 0xFF);  // MSB
   sendByte((address >> 8) & 0xFF);   // Milieu
   sendByte(address & 0xFF);          // LSB
